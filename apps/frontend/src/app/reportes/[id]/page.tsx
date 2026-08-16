@@ -7,7 +7,7 @@ import dynamic from 'next/dynamic';
 import { fetchAPI } from '@/lib/api-client';
 
 const MapaComponent = dynamic(
-  () => import('@/app/components/mapa/MapaComponent'),
+  () => import('@/components/mapa/MapaGeneralLeaflet'),
   { ssr: false }
 );
 
@@ -79,7 +79,7 @@ export default function DetalleReportePage() {
   return (
     <main className="bg-slate-50 min-h-screen py-10 px-6">
       <div className="max-w-5xl mx-auto space-y-8">
-        
+
         {/* Botón Volver */}
         <button
           onClick={() => router.back()}
@@ -89,7 +89,7 @@ export default function DetalleReportePage() {
         </button>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          
+
           {/* GALERÍA DE FOTOS */}
           <div className="space-y-4">
             <div className="h-80 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm flex items-center justify-center">
@@ -111,11 +111,10 @@ export default function DetalleReportePage() {
                   <button
                     key={img.id}
                     onClick={() => setFotoSeleccionada(img.urlCloudinary)}
-                    className={`w-20 h-20 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 ${
-                      fotoSeleccionada === img.urlCloudinary
+                    className={`w-20 h-20 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 ${fotoSeleccionada === img.urlCloudinary
                         ? 'border-indigo-600 shadow-md scale-95'
                         : 'border-slate-200 opacity-70 hover:opacity-100'
-                    }`}
+                      }`}
                   >
                     <img src={img.urlCloudinary} alt="Miniatura" className="w-full h-full object-cover" />
                   </button>
@@ -129,11 +128,10 @@ export default function DetalleReportePage() {
             <div>
               <div className="flex items-center justify-between gap-4">
                 <span
-                  className={`px-3 py-1 rounded-full text-xs font-extrabold uppercase ${
-                    reporte.tipoReporte === 'PERDIDO'
+                  className={`px-3 py-1 rounded-full text-xs font-extrabold uppercase ${reporte.tipoReporte === 'PERDIDO'
                       ? 'bg-rose-100 text-rose-700 border border-rose-200'
                       : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
-                  }`}
+                    }`}
                 >
                   {reporte.tipoReporte}
                 </span>
