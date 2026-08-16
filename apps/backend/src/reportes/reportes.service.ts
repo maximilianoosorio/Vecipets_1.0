@@ -2,7 +2,7 @@ import { Express } from 'express';
 import 'multer';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 
 import { Mascota } from '../entities/mascota.entity';
 import { Reporte, Imagen } from '../entities/reporte.entity';
@@ -22,13 +22,12 @@ export class ReportesService {
     private readonly cloudinaryService: CloudinaryService,
   ) {}
 
-  // 1. Crear un nuevo reporte con su mascota e imágenes asociadas
+  // 1. Crear un nuevo reporte
   async crearReporte(
     dto: CrearReporteDto,
     usuarioLogueado: Usuario,
     archivosImagenes: Express.Multer.File[],
   ) {
-    // a. Registrar la mascota
     const nuevaMascota = this.mascotaRepo.create({
       nombre: dto.nombreMascota || 'Sin Nombre',
       especie: dto.especie,
@@ -41,54 +40,65 @@ export class ReportesService {
     });
     const mascotaGuardada = await this.mascotaRepo.save(nuevaMascota);
 
-    // b. Crear el reporte asociado (pasa a moderación)
-    const nuevoReporte = this.reporteRepo.create({
+    const datosReporte: any = {
       mascota: mascotaGuardada,
       usuario: usuarioLogueado,
       tipoReporte: dto.tipoReporte,
-      fechaEvento: new Date(dto.fechaEvento),
+      fechaEvento: dto.fechaEvento ? new Date(dto.fechaEvento) : new Date(),
       descripcion: dto.descripcion,
-      estado: 'PENDIENTE_APROBACION',
-    });
-    const reporteGuardado = await this.reporteRepo.save(nuevoReporte);
+      estado: (dto as any).estado || 'PUBLICADO',
+    };
 
-    // c. Subir imágenes a Cloudinary e insertarlas en BD
+    if ((dto as any).latitud) datosReporte.latitud = (dto as any).latitud;
+    if ((dto as any).longitud) datosReporte.longitud = (dto as any).longitud;
+    if ((dto as any).direccion) datosReporte.direccion = (dto as any).direccion;
+
+    const nuevoReporte = this.reporteRepo.create(datosReporte);
+    const reporteGuardado: any = await this.reporteRepo.save(nuevoReporte);
+
     if (archivosImagenes && archivosImagenes.length > 0) {
       for (const archivo of archivosImagenes) {
-        const resultadoCloudinary = await this.cloudinaryService.subirImagen(archivo);
-        
-        const nuevaImagen = this.imagenRepo.create({
-          mascota: mascotaGuardada,
-          reporte: reporteGuardado,
-          urlCloudinary: resultadoCloudinary.secure_url,
-          publicId: resultadoCloudinary.public_id,
-        });
-        await this.imagenRepo.save(nuevaImagen);
+        try {
+          const resultadoCloudinary = await this.cloudinaryService.subirImagen(archivo);
+          
+          const nuevaImagen = this.imagenRepo.create({
+            mascota: mascotaGuardada,
+            reporte: reporteGuardado,
+            urlCloudinary: resultadoCloudinary.secure_url,
+            publicId: resultadoCloudinary.public_id,
+          });
+          await this.imagenRepo.save(nuevaImagen);
+        } catch (error) {
+          console.error('Error subiendo imagen a Cloudinary:', error);
+        }
       }
     }
 
     return {
-      mensaje: 'Reporte registrado exitosamente y enviado a moderación',
+      mensaje: 'Reporte registrado exitosamente',
       reporteId: reporteGuardado.id,
     };
   }
 
-  // 2. Obtener solo reportes con estado PUBLICADO
+  // 2. Obtener reportes públicos
   async obtenerReportesPublicos() {
     return this.reporteRepo.find({
-      where: { estado: 'PUBLICADO' },
+      where: {
+        estado: In(['PUBLICADO', 'ACTIVO', 'PENDIENTE_APROBACION'] as any),
+      },
       relations: {
         mascota: true,
         imagenes: true,
       },
-      order: { creadoEn: 'DESC' },
+      order: { creadoEn: 'DESC' } as any,
+      take: 100,
     });
   }
 
-  // 3. Obtener un reporte por su ID ocultando credenciales sensibles
+  // 3. Obtener detalle de un reporte por ID
   async obtenerPorId(id: string) {
-    const reporte = await this.reporteRepo.findOne({
-      where: { id },
+    const reporte: any = await this.reporteRepo.findOne({
+      where: { id: id as any },
       relations: {
         mascota: true,
         imagenes: true,
@@ -100,31 +110,32 @@ export class ReportesService {
       throw new NotFoundException('El reporte solicitado no existe');
     }
 
-    // Ocultar datos sensibles del usuario
     if (reporte.usuario) {
-      const { contrasenaHash, password, ...usuarioLimpio } = reporte.usuario as any;
-      reporte.usuario = usuarioLimpio as Usuario;
+      const { contrasenaHash, password, ...usuarioLimpio } = reporte.usuario;
+      reporte.usuario = usuarioLimpio;
     }
 
     return reporte;
   }
 
-  // 4. Obtener reportes pendientes para el panel de moderación
+  // 4. Panel de moderación: Obtener reportes pendientes
   async obtenerPendientes() {
     return this.reporteRepo.find({
-      where: { estado: 'PENDIENTE_APROBACION' },
+      where: { estado: 'PENDIENTE_APROBACION' as any },
       relations: {
         mascota: true,
         imagenes: true,
         usuario: true,
       },
-      order: { creadoEn: 'ASC' },
+      order: { creadoEn: 'ASC' } as any,
     });
   }
 
-  // 5. Cambiar el estado de un reporte (PUBLICADO, RECHAZADO, RESUELTO)
+  // 5. Cambiar el estado de un reporte
   async cambiarEstado(id: string, nuevoEstado: string) {
-    const reporte = await this.reporteRepo.findOne({ where: { id } });
+    const reporte: any = await this.reporteRepo.findOne({
+      where: { id: id as any },
+    });
 
     if (!reporte) {
       throw new NotFoundException('Reporte no encontrado');
@@ -139,15 +150,15 @@ export class ReportesService {
     };
   }
 
-  // 6. Obtener únicamente los reportes creados por el usuario en sesión
+  // 6. Reportes creados por el usuario en sesión
   async obtenerMisReportes(usuarioId: string) {
     return this.reporteRepo.find({
-      where: { usuario: { id: usuarioId } },
+      where: { usuario: { id: usuarioId as any } },
       relations: {
         mascota: true,
         imagenes: true,
       },
-      order: { creadoEn: 'DESC' },
+      order: { creadoEn: 'DESC' } as any,
     });
   }
 }
