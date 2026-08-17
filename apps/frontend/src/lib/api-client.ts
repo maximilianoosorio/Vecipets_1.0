@@ -1,34 +1,38 @@
-// apps/frontend/src/lib/api-client.ts
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+const API_URL = (
+  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
+).replace(/\/+$/, '');
 
-// Normaliza la URL eliminando barras finales
-const API_URL = BASE_URL.replace(/\/+$/, '');
-
-export async function fetchAPI<T>(
+export async function fetchAPI<T = any>(
   endpoint: string,
-  options: RequestInit = {},
+  options: RequestInit = {}
 ): Promise<T> {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...options.headers,
+    ...(options.headers as Record<string, string>),
   };
 
-  // Asegura que endpoint comience con '/'
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-
-  const response = await fetch(`${API_URL}${cleanEndpoint}`, {
-    ...options,
-    headers,
-  });
-
-  const data = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw new Error(data.message || 'Ocurrió un error en la solicitud');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
-  return data as T;
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+
+  try {
+    const response = await fetch(`${API_URL}${cleanEndpoint}`, {
+      ...options,
+      headers,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Error HTTP: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    console.warn(`[API Client] Fallo al consultar ${cleanEndpoint}:`, error.message);
+    throw error;
+  }
 }

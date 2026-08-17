@@ -2,20 +2,18 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 interface UsuarioSesion {
   id?: string;
   nombre?: string;
   nombre_completo?: string;
   email?: string;
-  correo?: string;
-  rol?: string;
 }
 
 export default function Navbar() {
-  const router = useRouter();
   const pathname = usePathname();
+  const router = useRouter();
   const [usuario, setUsuario] = useState<UsuarioSesion | null>(null);
   const [menuAbierto, setMenuAbierto] = useState<boolean>(false);
 
@@ -25,7 +23,7 @@ export default function Navbar() {
       try {
         setUsuario(JSON.parse(userStored));
       } catch (e) {
-        console.error('Error al parsear datos de sesión:', e);
+        console.error('Error al leer sesión:', e);
       }
     } else {
       setUsuario(null);
@@ -42,208 +40,208 @@ export default function Navbar() {
     router.push('/login');
   };
 
-  const nombreMostrar =
-    usuario?.nombre ||
-    usuario?.nombre_completo?.split(' ')[0] ||
-    'Usuario';
+  const esActivo = (ruta: string) => {
+    if (ruta === '/') return pathname === '/';
+    return pathname === ruta || pathname.startsWith(`${ruta}/`);
+  };
 
-  const esModeradorOAdmin =
-    usuario?.rol === 'MODERADOR' ||
-    usuario?.rol === 'ADMINISTRADOR' ||
-    usuario?.rol === 'ADMIN';
-
-  const linkActivo = (ruta: string) =>
-    pathname === ruta
-      ? 'text-[#2E7D5B] font-bold'
-      : 'text-[#1F2937] hover:text-[#2E7D5B] font-medium';
+  const nombreMostrar = usuario?.nombre || usuario?.nombre_completo?.split(' ')[0] || 'Usuario';
 
   return (
-    <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-2xs">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16 sm:h-20">
-          
-          {/* LOGOTIPO INSTITUCIONAL */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <span className="text-2xl sm:text-3xl group-hover:scale-110 transition-transform">🐾</span>
-            <div className="flex flex-col">
-              <span className="text-xl sm:text-2xl font-extrabold text-[#1F2937] tracking-tight leading-none">
-                Veci<span className="text-[#2E7D5B]">Pets</span>
-              </span>
-              <span className="text-[9px] font-bold text-[#6B7280] tracking-wider uppercase mt-0.5 hidden sm:block">
-                Medellín
-              </span>
-            </div>
+    <header className="bg-white border-b border-slate-100 sticky top-0 z-50 shadow-xs h-[80px]">
+      <div className="max-w-[1240px] h-full mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+        
+        {/* LOGO AZUL VECIPETS */}
+        <Link href="/" className="flex items-center gap-2.5 group">
+          <div className="w-10 h-10 rounded-full bg-[#5E7BC4] flex items-center justify-center text-white transition-transform group-hover:scale-105 shadow-xs">
+            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 14c-1.66 0-3 1.34-3 3 0 1.66 1.34 3 3 3s3-1.34 3-3c0-1.66-1.34-3-3-3zm-6-4c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-9-4C8 6 7.1 6.9 7.1 8s.9 2 2 2 2-.9 2-2-.9-2-2.1-2zm6 0c-.9 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+            </svg>
+          </div>
+          <span className="text-2xl font-bold tracking-tight text-[#5E7BC4]">
+            VeciPets
+          </span>
+        </Link>
+
+        {/* NAVEGACIÓN DESKTOP COMPLETA */}
+        <nav className="hidden md:flex items-center gap-7">
+          <Link
+            href="/"
+            className={`text-sm font-semibold transition-colors pb-1 border-b-2 ${
+              esActivo('/') ? 'text-[#5E7BC4] border-[#5E7BC4]' : 'text-[#53627A] border-transparent hover:text-[#292A2F]'
+            }`}
+          >
+            Inicio
           </Link>
+          <Link
+            href="/reportes"
+            className={`text-sm font-semibold transition-colors pb-1 border-b-2 ${
+              esActivo('/reportes') ? 'text-[#5E7BC4] border-[#5E7BC4]' : 'text-[#53627A] border-transparent hover:text-[#292A2F]'
+            }`}
+          >
+            Reportes
+          </Link>
+          <Link
+            href="/mapa"
+            className={`text-sm font-semibold transition-colors pb-1 border-b-2 ${
+              esActivo('/mapa') ? 'text-[#5E7BC4] border-[#5E7BC4]' : 'text-[#53627A] border-transparent hover:text-[#292A2F]'
+            }`}
+          >
+            Mapa
+          </Link>
+          <Link
+            href="/refugios"
+            className={`text-sm font-semibold transition-colors pb-1 border-b-2 ${
+              esActivo('/refugios') ? 'text-[#5E7BC4] border-[#5E7BC4]' : 'text-[#53627A] border-transparent hover:text-[#292A2F]'
+            }`}
+          >
+            Refugios
+          </Link>
+          <Link
+            href="/informacion"
+            className={`text-sm font-semibold transition-colors pb-1 border-b-2 ${
+              esActivo('/informacion') ? 'text-[#5E7BC4] border-[#5E7BC4]' : 'text-[#53627A] border-transparent hover:text-[#292A2F]'
+            }`}
+          >
+            Información
+          </Link>
+        </nav>
 
-          {/* NAVEGACIÓN ESCRITORIO */}
-          <nav className="hidden md:flex items-center gap-7 text-sm">
-            <Link href="/" className={`${linkActivo('/')} transition-colors`}>
-              Inicio
-            </Link>
-            <Link href="/reportes" className={`${linkActivo('/reportes')} transition-colors`}>
-              Reportes
-            </Link>
-            <Link href="/mapa" className={`${linkActivo('/mapa')} transition-colors`}>
-              Mapa
-            </Link>
-            <Link href="/refugios" className={`${linkActivo('/refugios')} transition-colors`}>
-              Refugios
-            </Link>
-
-            {esModeradorOAdmin && (
+        {/* ACCIONES DE USUARIO */}
+        <div className="hidden md:flex items-center gap-4">
+          {usuario ? (
+            <div className="flex items-center gap-3">
               <Link
-                href="/moderacion"
-                className="bg-amber-50 text-amber-900 border border-amber-200 px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-amber-100 transition-colors"
+                href="/perfil"
+                className="bg-[#EEF2FC] text-[#5E7BC4] text-xs font-semibold px-4 py-2.5 rounded-full hover:bg-[#5E7BC4] hover:text-white transition-all flex items-center gap-1.5"
               >
-                🛡️ Moderación
+                <span>👤</span> {nombreMostrar}
               </Link>
-            )}
-          </nav>
-
-          {/* PERFIL / ACCIONES ESCRITORIO */}
-          <div className="hidden md:flex items-center gap-3">
-            {usuario ? (
-              <div className="flex items-center gap-3">
-                <Link
-                  href="/reportes/nuevo"
-                  className="bg-[#2E7D5B] hover:bg-[#4CAF78] text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-xs transition-all flex items-center gap-1.5"
-                >
-                  <span>➕</span> Reportar
-                </Link>
-
-                <Link
-                  href="/perfil"
-                  className="bg-slate-50 border border-slate-200 hover:border-[#2E7D5B] px-3.5 py-2 rounded-xl text-xs text-slate-700 font-semibold transition-colors flex items-center gap-1.5"
-                >
-                  <span>👤</span> {nombreMostrar}
-                </Link>
-
-                <button
-                  onClick={cerrarSesion}
-                  className="text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-3 py-2 rounded-xl transition-colors cursor-pointer"
-                >
-                  Salir
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Link
-                  href="/login"
-                  className="text-xs font-bold text-[#1F2937] hover:text-[#2E7D5B] px-4 py-2 rounded-xl transition-colors"
-                >
-                  Ingresar
-                </Link>
-                <Link
-                  href="/registro"
-                  className="bg-[#2E7D5B] hover:bg-[#4CAF78] text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-all shadow-xs"
-                >
-                  Registrarme
-                </Link>
-              </div>
-            )}
-          </div>
-
-          {/* BOTÓN MÓVIL HAMBURGUESA */}
-          <div className="flex md:hidden items-center gap-2">
-            {usuario && (
+              <button
+                onClick={cerrarSesion}
+                className="text-xs font-semibold text-rose-600 hover:text-rose-700 px-3 py-2 transition-colors cursor-pointer"
+              >
+                Salir
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
               <Link
-                href="/reportes/nuevo"
-                className="bg-[#2E7D5B] text-white text-xs font-bold px-3 py-2 rounded-xl shadow-xs"
+                href="/login"
+                className="text-[#5E7BC4] hover:text-[#4F6FB8] text-sm font-semibold px-3 py-2 transition-colors"
               >
-                + Reportar
+                Iniciar sesión
               </Link>
-            )}
-            <button
-              onClick={() => setMenuAbierto(!menuAbierto)}
-              className="p-2 rounded-xl text-slate-600 hover:text-[#2E7D5B] hover:bg-slate-100 transition-colors"
-              aria-label="Abrir menú de navegación"
-            >
-              {menuAbierto ? (
-                <span className="text-xl font-bold leading-none">✕</span>
-              ) : (
-                <span className="text-xl font-bold leading-none">☰</span>
-              )}
-            </button>
-          </div>
-
+              <Link
+                href="/registro"
+                className="bg-[#5E7BC4] hover:bg-[#4F6FB8] text-white text-sm font-semibold px-6 py-2.5 rounded-full transition-all shadow-sm hover:shadow"
+              >
+                Registrarse
+              </Link>
+            </div>
+          )}
         </div>
+
+        {/* BOTÓN MÓVIL HAMBURGUESA */}
+        <div className="md:hidden flex items-center">
+          <button
+            onClick={() => setMenuAbierto(!menuAbierto)}
+            className="p-2 text-[#5E7BC4] hover:text-[#4F6FB8] focus:outline-none"
+            aria-label="Abrir menú"
+          >
+            {menuAbierto ? (
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
+          </button>
+        </div>
+
       </div>
 
       {/* MENÚ MÓVIL DESPLEGABLE */}
       {menuAbierto && (
-        <div className="md:hidden border-t border-slate-200 bg-white px-4 pt-3 pb-6 space-y-3 shadow-lg animate-in slide-in-from-top-2 duration-150">
-          <nav className="flex flex-col space-y-1.5 text-sm">
-            <Link
-              href="/"
-              onClick={() => setMenuAbierto(false)}
-              className={`p-2.5 rounded-xl ${pathname === '/' ? 'bg-[#2E7D5B]/10 text-[#2E7D5B] font-bold' : 'text-slate-700'}`}
-            >
-              🏠 Inicio
-            </Link>
-            <Link
-              href="/reportes"
-              onClick={() => setMenuAbierto(false)}
-              className={`p-2.5 rounded-xl ${pathname === '/reportes' ? 'bg-[#2E7D5B]/10 text-[#2E7D5B] font-bold' : 'text-slate-700'}`}
-            >
-              📋 Reportes
-            </Link>
-            <Link
-              href="/mapa"
-              onClick={() => setMenuAbierto(false)}
-              className={`p-2.5 rounded-xl ${pathname === '/mapa' ? 'bg-[#2E7D5B]/10 text-[#2E7D5B] font-bold' : 'text-slate-700'}`}
-            >
-              🗺️ Mapa
-            </Link>
-            <Link
-              href="/refugios"
-              onClick={() => setMenuAbierto(false)}
-              className={`p-2.5 rounded-xl ${pathname === '/refugios' ? 'bg-[#2E7D5B]/10 text-[#2E7D5B] font-bold' : 'text-slate-700'}`}
-            >
-              🏡 Refugios
-            </Link>
-
-            {esModeradorOAdmin && (
-              <Link
-                href="/moderacion"
-                onClick={() => setMenuAbierto(false)}
-                className="p-2.5 rounded-xl bg-amber-50 text-amber-900 font-bold border border-amber-200"
-              >
-                🛡️ Panel de Moderación
-              </Link>
-            )}
-          </nav>
-
-          <div className="border-t border-slate-100 pt-3">
+        <div className="md:hidden bg-white border-t border-slate-100 px-4 py-4 space-y-2.5 shadow-lg">
+          <Link
+            href="/"
+            onClick={() => setMenuAbierto(false)}
+            className={`block px-3 py-2 rounded-lg text-sm font-semibold ${
+              esActivo('/') ? 'bg-[#EEF2FC] text-[#5E7BC4]' : 'text-[#292A2F]'
+            }`}
+          >
+            Inicio
+          </Link>
+          <Link
+            href="/reportes"
+            onClick={() => setMenuAbierto(false)}
+            className={`block px-3 py-2 rounded-lg text-sm font-semibold ${
+              esActivo('/reportes') ? 'bg-[#EEF2FC] text-[#5E7BC4]' : 'text-[#292A2F]'
+            }`}
+          >
+            Reportes
+          </Link>
+          <Link
+            href="/mapa"
+            onClick={() => setMenuAbierto(false)}
+            className={`block px-3 py-2 rounded-lg text-sm font-semibold ${
+              esActivo('/mapa') ? 'bg-[#EEF2FC] text-[#5E7BC4]' : 'text-[#292A2F]'
+            }`}
+          >
+            Mapa
+          </Link>
+          <Link
+            href="/refugios"
+            onClick={() => setMenuAbierto(false)}
+            className={`block px-3 py-2 rounded-lg text-sm font-semibold ${
+              esActivo('/refugios') ? 'bg-[#EEF2FC] text-[#5E7BC4]' : 'text-[#292A2F]'
+            }`}
+          >
+            Refugios
+          </Link>
+          <Link
+            href="/informacion"
+            onClick={() => setMenuAbierto(false)}
+            className={`block px-3 py-2 rounded-lg text-sm font-semibold ${
+              esActivo('/informacion') ? 'bg-[#EEF2FC] text-[#5E7BC4]' : 'text-[#292A2F]'
+            }`}
+          >
+            Información
+          </Link>
+          
+          <div className="pt-3 border-t border-slate-100 space-y-2">
             {usuario ? (
-              <div className="space-y-2">
+              <>
                 <Link
                   href="/perfil"
                   onClick={() => setMenuAbierto(false)}
-                  className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs text-slate-800 font-bold flex items-center justify-between"
+                  className="block w-full bg-[#EEF2FC] text-[#5E7BC4] text-center font-semibold py-2.5 rounded-full text-sm"
                 >
-                  <span>👤 Mi Perfil ({nombreMostrar})</span>
-                  <span className="text-[10px] text-[#2E7D5B] uppercase font-extrabold">{usuario.rol || 'CIUDADANO'}</span>
+                  👤 Mi Perfil ({nombreMostrar})
                 </Link>
                 <button
                   onClick={cerrarSesion}
-                  className="w-full bg-rose-50 text-rose-700 font-bold py-2.5 rounded-xl text-xs hover:bg-rose-100 transition-colors"
+                  className="block w-full bg-rose-50 text-rose-700 text-center font-semibold py-2.5 rounded-full text-sm"
                 >
                   Cerrar Sesión
                 </button>
-              </div>
+              </>
             ) : (
               <div className="grid grid-cols-2 gap-2">
                 <Link
                   href="/login"
                   onClick={() => setMenuAbierto(false)}
-                  className="w-full text-center border border-slate-200 font-bold py-2.5 rounded-xl text-xs text-slate-700 hover:bg-slate-50"
+                  className="block w-full text-center border border-[#5E7BC4] text-[#5E7BC4] font-semibold py-2 rounded-full text-sm"
                 >
-                  Ingresar
+                  Iniciar sesión
                 </Link>
                 <Link
                   href="/registro"
                   onClick={() => setMenuAbierto(false)}
-                  className="w-full text-center bg-[#2E7D5B] text-white font-bold py-2.5 rounded-xl text-xs hover:bg-[#4CAF78]"
+                  className="block w-full text-center bg-[#5E7BC4] text-white font-semibold py-2 rounded-full text-sm"
                 >
                   Registrarse
                 </Link>

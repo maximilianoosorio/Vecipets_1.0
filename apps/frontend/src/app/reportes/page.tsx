@@ -91,32 +91,32 @@ export default function ReportesPage() {
 
   return (
     <main className="min-h-screen bg-[#F8FAF9] py-8 sm:py-12 px-4 sm:px-6 lg:px-8 text-[#1F2937]">
-      <div className="max-w-7xl mx-auto space-y-8">
+      <div className="max-w-[1240px] mx-auto space-y-8">
         
         {/* ENCABEZADO Y BOTÓN CREAR */}
-        <div className="bg-white border border-slate-200 p-6 sm:p-8 rounded-3xl shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="bg-white border border-slate-200 p-6 sm:p-8 rounded-[16px] shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <span className="inline-block bg-[#2E7D5B]/10 text-[#2E7D5B] text-xs font-bold px-3.5 py-1 rounded-full uppercase tracking-wider mb-2">
-              📋 Directorio de Casos en Medellín
+              📋 Directorio de Casos
             </span>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1F2937]">
+            <h1 className="text-2xl sm:text-3xl font-bold text-[#1F2937]">
               Mascotas Reportadas
             </h1>
             <p className="text-xs sm:text-sm text-[#6B7280] mt-1 max-w-xl">
-              Explora los casos de mascotas perdidas y encontradas. La red de refugios y la comunidad de Medellín trabajan juntos en cada rescate.
+              Explora los reportes de mascotas perdidas y encontradas para facilitar su búsqueda y recuperación.
             </p>
           </div>
 
           <div className="flex gap-3 w-full md:w-auto">
             <Link
               href="/mapa"
-              className="flex-1 md:flex-initial text-center bg-white border border-[#2E7D5B] text-[#2E7D5B] hover:bg-[#2E7D5B]/5 font-bold px-5 py-3 rounded-xl text-xs sm:text-sm transition-all"
+              className="flex-1 md:flex-initial text-center bg-white border border-[#2E7D5B] text-[#2E7D5B] hover:bg-[#2E7D5B]/5 font-semibold px-5 py-2.5 rounded-[10px] text-xs sm:text-sm transition-all"
             >
               🗺️ Ver en Mapa
             </Link>
             <Link
               href="/reportes/nuevo"
-              className="flex-1 md:flex-initial text-center bg-[#2E7D5B] hover:bg-[#4CAF78] text-white font-bold px-6 py-3 rounded-xl text-xs sm:text-sm transition-all shadow-md flex items-center justify-center gap-1.5"
+              className="flex-1 md:flex-initial text-center bg-[#2E7D5B] hover:bg-[#4CAF78] text-white font-semibold px-6 py-2.5 rounded-[10px] text-xs sm:text-sm transition-all shadow-xs flex items-center justify-center gap-1.5"
             >
               <span>➕</span> Publicar Reporte
             </Link>
@@ -124,17 +124,17 @@ export default function ReportesPage() {
         </div>
 
         {/* BARRA DE BÚSQUEDA Y FILTROS */}
-        <div className="bg-white border border-slate-200 p-4 sm:p-5 rounded-3xl shadow-xs space-y-4">
+        <div className="bg-white border border-slate-200 p-4 sm:p-5 rounded-[16px] shadow-xs space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             
-            {/* Buscador de Barrio/Nombre/Raza */}
+            {/* Buscador */}
             <div className="sm:col-span-1 lg:col-span-2">
               <input
                 type="text"
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
-                placeholder="Buscar por nombre, barrio (ej: Poblado, Belén) o raza..."
-                className="w-full bg-[#F8FAF9] border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-[#1F2937] focus:outline-none focus:border-[#2E7D5B] focus:bg-white transition-colors"
+                placeholder="Buscar por nombre, sector o raza..."
+                className="w-full bg-[#F8FAF9] border border-slate-200 rounded-[10px] px-3.5 py-2.5 text-xs text-[#1F2937] focus:outline-none focus:border-[#2E7D5B] focus:bg-white transition-colors"
               />
             </div>
 
@@ -143,7 +143,7 @@ export default function ReportesPage() {
               <select
                 value={filtroTipo}
                 onChange={(e) => setFiltroTipo(e.target.value)}
-                className="w-full bg-[#F8FAF9] border border-slate-200 text-xs font-semibold text-[#1F2937] rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#2E7D5B] focus:bg-white"
+                className="w-full bg-[#F8FAF9] border border-slate-200 text-xs font-semibold text-[#1F2937] rounded-[10px] px-3.5 py-2.5 focus:outline-none focus:border-[#2E7D5B] focus:bg-white"
               >
                 <option value="TODOS">Todos los casos</option>
                 <option value="PERDIDO">🔴 Mascotas Perdidas</option>
@@ -156,11 +156,11 @@ export default function ReportesPage() {
               <select
                 value={filtroEspecie}
                 onChange={(e) => setFiltroEspecie(e.target.value)}
-                className="w-full bg-[#F8FAF9] border border-slate-200 text-xs font-semibold text-[#1F2937] rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#2E7D5B] focus:bg-white"
+                className="w-full bg-[#F8FAF9] border border-slate-200 text-xs font-semibold text-[#1F2937] rounded-[10px] px-3.5 py-2.5 focus:outline-none focus:border-[#2E7D5B] focus:bg-white"
               >
                 <option value="TODOS">Todas las especies</option>
-                <option value="PERRO">Perros 🐶</option>
-                <option value="GATO">Gatos 🐱</option>
+                <option value="PERRO">Perros</option>
+                <option value="GATO">Gatos</option>
                 <option value="OTRO">Otros</option>
               </select>
             </div>
@@ -178,7 +178,7 @@ export default function ReportesPage() {
                   setFiltroEspecie('TODOS');
                   setBusqueda('');
                 }}
-                className="text-[#2E7D5B] font-bold hover:underline cursor-pointer"
+                className="text-[#2E7D5B] font-semibold hover:underline cursor-pointer"
               >
                 Limpiar filtros
               </button>
@@ -188,7 +188,7 @@ export default function ReportesPage() {
 
         {/* MENSAJES DE ERROR */}
         {error && (
-          <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs sm:text-sm p-4 rounded-2xl text-center">
+          <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs sm:text-sm p-4 rounded-[12px] text-center">
             ⚠️ {error}
           </div>
         )}
@@ -199,13 +199,13 @@ export default function ReportesPage() {
             {Array.from({ length: 6 }).map((_, idx) => (
               <div
                 key={idx}
-                className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-xs animate-pulse flex flex-col"
+                className="bg-white border border-slate-200 rounded-[16px] overflow-hidden shadow-xs animate-pulse flex flex-col"
               >
-                <div className="h-52 bg-slate-200" />
+                <div className="h-48 bg-slate-200" />
                 <div className="p-5 space-y-3 flex-1">
                   <div className="h-4 bg-slate-200 rounded-md w-3/4" />
                   <div className="h-3 bg-slate-200 rounded-md w-1/2" />
-                  <div className="h-12 bg-slate-100 rounded-xl" />
+                  <div className="h-10 bg-slate-100 rounded-[10px]" />
                 </div>
               </div>
             ))}
@@ -214,11 +214,11 @@ export default function ReportesPage() {
 
         {/* ESTADO VACÍO */}
         {!cargando && !error && reportesFiltrados.length === 0 && (
-          <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center max-w-lg mx-auto shadow-xs space-y-4">
-            <span className="text-5xl block">🐾</span>
-            <h3 className="text-lg font-bold text-[#1F2937]">No se encontraron reportes</h3>
+          <div className="bg-white border border-slate-200 rounded-[16px] p-12 text-center max-w-lg mx-auto shadow-xs space-y-4">
+            <span className="text-4xl block">🐾</span>
+            <h3 className="text-base font-bold text-[#1F2937]">No se encontraron reportes</h3>
             <p className="text-xs text-[#6B7280] leading-relaxed">
-              No hay casos que coincidan con los filtros seleccionados o aún no se han publicado reportes en este sector.
+              No hay casos que coincidan con los filtros seleccionados actualmente.
             </p>
             <button
               onClick={() => {
@@ -226,14 +226,14 @@ export default function ReportesPage() {
                 setFiltroEspecie('TODOS');
                 setBusqueda('');
               }}
-              className="bg-[#2E7D5B] hover:bg-[#4CAF78] text-white text-xs font-bold px-6 py-2.5 rounded-xl transition-all"
+              className="bg-[#2E7D5B] hover:bg-[#4CAF78] text-white text-xs font-semibold px-6 py-2.5 rounded-[10px] transition-all"
             >
               Restablecer Filtros
             </button>
           </div>
         )}
 
-        {/* GRILLA DE REPORTES (CARDS RESPONSIVAS) */}
+        {/* GRILLA DE REPORTES */}
         {!cargando && !error && reportesFiltrados.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {reportesFiltrados.map((reporte) => {
@@ -246,32 +246,31 @@ export default function ReportesPage() {
               return (
                 <div
                   key={reporte.id}
-                  className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-xs hover:shadow-md hover:border-[#2E7D5B]/40 transition-all flex flex-col group"
+                  className="bg-white border border-slate-200 rounded-[16px] overflow-hidden shadow-xs hover:-translate-y-0.5 transition-all flex flex-col"
                 >
-                  {/* IMAGEN DE CABECERA CON BADGE */}
-                  <div className="relative h-52 bg-slate-100 overflow-hidden flex items-center justify-center">
+                  {/* IMAGEN CON BADGE */}
+                  <div className="relative h-48 bg-slate-100 overflow-hidden flex items-center justify-center">
                     {fotoUrl ? (
                       <img
                         src={fotoUrl}
                         alt={reporte.mascota?.nombre || 'Mascota'}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        className="w-full h-full object-cover"
                       />
                     ) : (
                       <div className="flex flex-col items-center gap-1 text-slate-400">
-                        <span className="text-4xl">🐾</span>
-                        <span className="text-[10px]">Sin foto</span>
+                        <span className="text-3xl">🐾</span>
+                        <span className="text-[10px]">Sin foto disponible</span>
                       </div>
                     )}
 
-                    {/* BADGE DE TIPO */}
                     <span
-                      className={`absolute top-3.5 right-3.5 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider shadow-xs ${
+                      className={`absolute top-3.5 right-3.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                         esPerdido
-                          ? 'bg-rose-600 text-white'
+                          ? 'bg-[#DC2626] text-white'
                           : 'bg-[#3B82F6] text-white'
                       }`}
                     >
-                      {esPerdido ? '🔴 Perdida' : '🔵 Encontrada'}
+                      {esPerdido ? 'Perdida' : 'Encontrada'}
                     </span>
                   </div>
 
@@ -279,58 +278,56 @@ export default function ReportesPage() {
                   <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                     <div>
                       <div className="flex items-center justify-between gap-2 mb-1">
-                        <span className="text-[10px] font-semibold text-[#2E7D5B] bg-[#2E7D5B]/10 px-2.5 py-0.5 rounded-md truncate max-w-[160px]">
-                          📍 {reporte.direccion || 'Medellín'}
+                        <span className="text-[10px] font-medium text-[#2E7D5B] bg-[#2E7D5B]/10 px-2.5 py-0.5 rounded-md truncate max-w-[160px]">
+                          📍 {reporte.direccion || 'Ubicación registrada'}
                         </span>
                         <span className="text-[10px] text-[#6B7280]">
-                          {fecha ? new Date(fecha).toLocaleDateString('es-CO') : ''}
+                          {fecha ? new Date(fecha).toLocaleDateString() : ''}
                         </span>
                       </div>
 
-                      <h2 className="text-lg font-bold text-[#1F2937] truncate mt-1">
-                        {reporte.mascota?.nombre || (esPerdido ? 'Sin Nombre Registrado' : 'Mascota Rescatada')}
+                      <h2 className="text-base font-bold text-[#1F2937] truncate mt-1">
+                        {reporte.mascota?.nombre || (esPerdido ? 'Mascota sin nombre' : 'Mascota encontrada')}
                       </h2>
 
                       <p className="text-xs text-[#6B7280] line-clamp-2 mt-1 leading-relaxed">
-                        {reporte.descripcion || 'Sin descripción adicional.'}
+                        {reporte.descripcion || 'Sin descripción detallada.'}
                       </p>
 
-                      {/* DETALLES DE LA MASCOTA */}
-                      <div className="grid grid-cols-2 gap-2 mt-3 bg-[#F8FAF9] p-3 rounded-2xl border border-slate-100 text-[11px]">
+                      <div className="grid grid-cols-2 gap-2 mt-3 bg-[#F8FAF9] p-3 rounded-[10px] border border-slate-100 text-[11px]">
                         <div>
-                          <span className="text-[#6B7280] block text-[9px] uppercase font-bold">Especie</span>
-                          <span className="font-semibold text-slate-800 truncate block">
+                          <span className="text-[#6B7280] block text-[9px] uppercase font-semibold">Especie</span>
+                          <span className="font-medium text-slate-800 truncate block">
                             {reporte.mascota?.especie || 'No especificada'}
                           </span>
                         </div>
                         <div>
-                          <span className="text-[#6B7280] block text-[9px] uppercase font-bold">Raza</span>
-                          <span className="font-semibold text-slate-800 truncate block">
+                          <span className="text-[#6B7280] block text-[9px] uppercase font-semibold">Raza</span>
+                          <span className="font-medium text-slate-800 truncate block">
                             {reporte.mascota?.raza || 'Mestizo'}
                           </span>
                         </div>
                         <div>
-                          <span className="text-[#6B7280] block text-[9px] uppercase font-bold">Color</span>
-                          <span className="font-semibold text-slate-800 truncate block">
+                          <span className="text-[#6B7280] block text-[9px] uppercase font-semibold">Color</span>
+                          <span className="font-medium text-slate-800 truncate block">
                             {reporte.mascota?.color || 'No especificado'}
                           </span>
                         </div>
                         <div>
-                          <span className="text-[#6B7280] block text-[9px] uppercase font-bold">Tamaño</span>
-                          <span className="font-semibold text-slate-800 truncate block">
+                          <span className="text-[#6B7280] block text-[9px] uppercase font-semibold">Tamaño</span>
+                          <span className="font-medium text-slate-800 truncate block">
                             {reporte.mascota?.tamano || 'Mediano'}
                           </span>
                         </div>
                       </div>
                     </div>
 
-                    {/* BOTÓN AL EXPEDIENTE */}
                     <div className="pt-2 border-t border-slate-100">
                       <Link
                         href={`/reportes/${reporte.id}`}
-                        className="w-full bg-[#2E7D5B] hover:bg-[#4CAF78] text-white text-xs font-bold py-2.5 rounded-xl transition-all text-center block shadow-2xs"
+                        className="w-full bg-[#2E7D5B] hover:bg-[#4CAF78] text-white text-xs font-semibold py-2.5 rounded-[10px] transition-all text-center block"
                       >
-                        Ver Expediente y Contactar Refugio →
+                        Ver detalle del reporte
                       </Link>
                     </div>
                   </div>

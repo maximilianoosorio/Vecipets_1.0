@@ -1,14 +1,18 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Poppins } from 'next/font/google';
+import Navbar from '@/components/layout/Navbar';
+import Footer from '@/components/layout/Footer';
 import './globals.css';
 
-import Navbar from '@/components/layout/Navbar';
-
-const inter = Inter({ subsets: ['latin'] });
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
-  title: 'VeciPets — Red Comunitaria de Mascotas',
-  description: 'Plataforma oficial para la gestión de mascotas perdidas y encontradas en Medellín.',
+  title: 'VeciPets | Reúne a las mascotas con sus familias',
+  description: 'Plataforma comunitaria para reportar y consultar mascotas perdidas y encontradas con apoyo de refugios y veterinarias.',
 };
 
 export default function RootLayout({
@@ -17,10 +21,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es">
-      <body className={`${inter.className} bg-slate-50 text-slate-900 antialiased`}>
+    <html lang="es" suppressHydrationWarning>
+      <body className={`${poppins.className} bg-white text-[#292A2F] antialiased min-h-screen flex flex-col`} suppressHydrationWarning>
         <Navbar />
-        {children}
+        <main className="flex-1">{children}</main>
+        <Footer />
       </body>
     </html>
   );
