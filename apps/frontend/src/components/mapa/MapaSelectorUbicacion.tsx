@@ -1,82 +1,84 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
-import L from 'leaflet';
+import { useState, useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-
-// Configuración de iconos de Leaflet para Next.js
-const iconoUbicacion = new L.Icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
 
 interface Props {
   latInicial?: number;
   lngInicial?: number;
-  onSeleccionarCoordenadas: (lat: number, lng: number) => void;
+  onSelectLocation: (lat: number, lng: number) => void;
 }
 
-// Subcomponente que gestiona el clic y recentra el mapa suavemente
-function ControladorMapa({
+function MarcadorInteractivo({
   posicion,
   onSelect,
+  icon,
 }: {
   posicion: [number, number];
   onSelect: (lat: number, lng: number) => void;
+  icon: any;
 }) {
-  const map = useMap();
-
   useMapEvents({
     click(e) {
       onSelect(e.latlng.lat, e.latlng.lng);
-      map.flyTo(e.latlng, map.getZoom(), { duration: 0.8 });
     },
   });
 
-  useEffect(() => {
-    map.flyTo(posicion, map.getZoom(), { duration: 0.8 });
-  }, [posicion, map]);
-
-  return null;
+  return icon ? <Marker position={posicion} icon={icon} /> : null;
 }
 
 export default function MapaSelectorUbicacion({
-  latInicial = 6.2442, // Medellín Centro
+  latInicial = 6.2442,
   lngInicial = -75.5812,
-  onSeleccionarCoordenadas,
+  onSelectLocation,
 }: Props) {
   const [posicion, setPosicion] = useState<[number, number]>([latInicial, lngInicial]);
+  const [icon, setIcon] = useState<any>(null);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setPosicion([latInicial, lngInicial]);
-  }, [latInicial, lngInicial]);
+    setMounted(true);
+    import('leaflet').then((L) => {
+      const customIcon = L.divIcon({
+        className: 'custom-selector-marker',
+        html: `
+          <div style="background-color: #5E7BC4; width: 32px; height: 32px; border-radius: 50%; border: 3px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: white; font-size: 15px;">
+            📍
+          </div>
+        `,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+      });
+      setIcon(customIcon);
+    });
+  }, []);
 
   const handleSelect = (lat: number, lng: number) => {
     setPosicion([lat, lng]);
-    onSeleccionarCoordenadas(lat, lng);
+    onSelectLocation(lat, lng);
   };
 
+  if (!mounted) {
+    return (
+      <div className="w-full h-full bg-[#EEF2FC] flex items-center justify-center text-[#53627A] text-xs font-semibold">
+        Cargando selector de ubicación...
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full h-[280px] sm:h-[340px] md:h-[380px] rounded-2xl overflow-hidden border border-slate-200 shadow-inner relative z-0">
-      <MapContainer
-        center={posicion}
-        zoom={13}
-        scrollWheelZoom={false}
-        className="w-full h-full"
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <Marker position={posicion} icon={iconoUbicacion} />
-        <ControladorMapa posicion={posicion} onSelect={handleSelect} />
-      </MapContainer>
-    </div>
+    <MapContainer
+      center={[latInicial, lngInicial]}
+      zoom={13}
+      scrollWheelZoom={false}
+      className="w-full h-full z-0"
+    >
+      <TileLayer
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+      <MarcadorInteractivo posicion={posicion} onSelect={handleSelect} icon={icon} />
+    </MapContainer>
   );
 }

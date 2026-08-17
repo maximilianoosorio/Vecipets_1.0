@@ -7,29 +7,37 @@ import { fetchAPI } from '@/lib/api-client';
 
 export default function RegistroPage() {
   const router = useRouter();
-  const [form, setForm] = useState({
+  const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState('');
+  const [exito, setExito] = useState(false);
+
+  const [formData, setFormData] = useState({
     nombre: '',
     apellido: '',
     correo: '',
     telefono: '',
+    direccion: '',
     contrasena: '',
-    confirmarContrasena: '',
+    confirmContrasena: '',
+    rol: 'CIUDADANO' as 'CIUDADANO' | 'REFUGIO',
+    nombreOrganizacion: '',
   });
 
-  const [error, setError] = useState('');
-  const [exito, setExito] = useState(false);
-  const [cargando, setCargando] = useState(false);
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (form.contrasena !== form.confirmarContrasena) {
-      setError('Las contraseñas no coinciden. Por favor verifícalas.');
+    if (formData.contrasena !== formData.confirmContrasena) {
+      setError('Las contraseñas no coinciden.');
       return;
     }
 
-    if (form.contrasena.length < 6) {
+    if (formData.contrasena.length < 6) {
       setError('La contraseña debe tener al menos 6 caracteres.');
       return;
     }
@@ -37,180 +45,257 @@ export default function RegistroPage() {
     setCargando(true);
 
     try {
-      const emailNormalizado = form.correo.trim().toLowerCase();
-      const nombreCompleto = `${form.nombre.trim()} ${form.apellido.trim()}`.trim();
+      // Payload adaptado exactamente al DTO del backend en español
+      const payload: Record<string, any> = {
+        nombre: formData.nombre.trim(),
+        apellido: formData.apellido.trim(),
+        correo: formData.correo.trim().toLowerCase(),
+        contrasena: formData.contrasena,
+      };
 
-      await fetchAPI('/auth/registro', {
+      // Si el usuario seleccionó Refugio y completó el nombre de la organización
+      if (formData.rol === 'REFUGIO') {
+        payload.rol = 'REFUGIO';
+        payload.nombreOrganizacion = formData.nombreOrganizacion.trim() || `${formData.nombre} ${formData.apellido}`;
+      }
+
+      // Si el DTO acepta teléfono opcional
+      if (formData.telefono.trim()) {
+        payload.telefono = formData.telefono.trim();
+      }
+
+      const res: any = await fetchAPI('/auth/registro', {
         method: 'POST',
-        body: JSON.stringify({
-          nombre: form.nombre.trim(),
-          apellido: form.apellido.trim(),
-          nombreCompleto,
-          nombre_completo: nombreCompleto,
-          correo: emailNormalizado,
-          email: emailNormalizado,
-          telefono: form.telefono.trim() || undefined,
-          contrasena: form.contrasena,
-          password: form.contrasena,
-          rol: 'CIUDADANO',
-        }),
+        body: JSON.stringify(payload),
       });
 
-      setExito(true);
-      setTimeout(() => router.push('/login'), 2000);
+      // Si devuelve token directo tras el registro
+      const token = res?.token || res?.access_token;
+      const usuario = res?.usuario || res?.user || {
+        nombre: `${formData.nombre} ${formData.apellido}`,
+        correo: formData.correo,
+        rol: formData.rol,
+      };
+
+      if (token) {
+        localStorage.setItem('token', token);
+        localStorage.setItem('usuario', JSON.stringify(usuario));
+
+        if (usuario.rol === 'ADMIN' || usuario.rol === 'MODERADOR') {
+          router.push('/moderacion');
+        } else if (usuario.rol === 'REFUGIO') {
+          router.push('/refugios');
+        } else {
+          router.push('/perfil');
+        }
+      } else {
+        setExito(true);
+        setTimeout(() => {
+          router.push('/login');
+        }, 1800);
+      }
     } catch (err: any) {
-      setError(err.message || 'Error al registrar tu cuenta. El correo ya podría estar en uso.');
+      console.error('Error al registrar usuario:', err);
+      // Extrae mensajes si viene como array del ValidationPipe
+      let mensajeError = err.message || 'Error al procesar el registro.';
+      if (Array.isArray(err.message)) {
+        mensajeError = err.message.join(', ');
+      }
+      setError(mensajeError);
     } finally {
       setCargando(false);
     }
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-[#F8FAF9] p-4 sm:p-6 lg:p-8 text-[#1F2937]">
-      <div className="w-full max-w-md space-y-6">
+    <main className="min-h-screen bg-white py-12 px-4 sm:px-6 lg:px-8 font-sans text-[#292A2F] flex items-center justify-center">
+      <div className="max-w-md w-full space-y-6">
         
-        {/* ENCABEZADO CON LOGO */}
+        {/* ENCABEZADO */}
         <div className="text-center space-y-2">
-          <Link href="/" className="inline-flex items-center gap-2 group mb-1">
-            <span className="text-3xl group-hover:scale-110 transition-transform">🐾</span>
-            <span className="text-2xl font-extrabold text-[#1F2937] tracking-tight">
-              Veci<span className="text-[#2E7D5B]">Pets</span>
-            </span>
-          </Link>
-          <h1 className="text-2xl font-bold text-[#1F2937]">Registro de Ciudadano</h1>
-          <p className="text-xs sm:text-sm text-[#6B7280]">
-            Únete a la red comunitaria para ayudar a reunir mascotas en Medellín
+          <div className="w-12 h-12 rounded-full bg-[#5E7BC4] flex items-center justify-center text-white mx-auto shadow-xs">
+            <svg className="w-7 h-7" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 14c-1.66 0-3 1.34-3 3 0 1.66 1.34 3 3 3s3-1.34 3-3c0-1.66-1.34-3-3-3zm-6-4c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-9-4C8 6 7.1 6.9 7.1 8s.9 2 2 2 2-.9 2-2-.9-2-2.1-2zm6 0c-.9 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+            </svg>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#292A2F]">Crea tu cuenta</h1>
+          <p className="text-xs sm:text-sm text-[#53627A]">
+            Únete a la comunidad de VeciPets en Medellín.
           </p>
         </div>
 
+        {/* SELECTOR DE ROL */}
+        <div className="bg-[#EEF2FC] p-1.5 rounded-full flex gap-1 border border-slate-100">
+          <button
+            type="button"
+            onClick={() => setFormData((prev) => ({ ...prev, rol: 'CIUDADANO' }))}
+            className={`flex-1 py-2 rounded-full text-xs font-bold transition-all ${
+              formData.rol === 'CIUDADANO'
+                ? 'bg-[#5E7BC4] text-white shadow-2xs'
+                : 'text-[#53627A] hover:text-[#292A2F]'
+            }`}
+          >
+            👤 Soy Ciudadano
+          </button>
+          <button
+            type="button"
+            onClick={() => setFormData((prev) => ({ ...prev, rol: 'REFUGIO' }))}
+            className={`flex-1 py-2 rounded-full text-xs font-bold transition-all ${
+              formData.rol === 'REFUGIO'
+                ? 'bg-[#5E7BC4] text-white shadow-2xs'
+                : 'text-[#53627A] hover:text-[#292A2F]'
+            }`}
+          >
+            🏠 Soy Refugio / Albergue
+          </button>
+        </div>
+
+        {/* MENSAJES */}
+        {error && (
+          <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3.5 rounded-2xl text-center leading-relaxed">
+            ⚠️ {error}
+          </div>
+        )}
+
+        {exito && (
+          <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs p-3.5 rounded-2xl text-center">
+            ✅ ¡Cuenta creada exitosamente! Redirigiendo...
+          </div>
+        )}
+
         {/* FORMULARIO */}
-        <form
-          onSubmit={handleSubmit}
-          className="bg-white border border-slate-200 p-6 sm:p-8 rounded-3xl shadow-sm space-y-4"
-        >
-          {error && (
-            <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs sm:text-sm p-3.5 rounded-2xl">
-              ⚠️ {error}
-            </div>
-          )}
-
-          {exito && (
-            <div className="bg-emerald-50 border border-emerald-200 text-[#2E7D5B] text-xs sm:text-sm p-3.5 rounded-2xl text-center font-bold">
-              🎉 ¡Registro exitoso! Redirigiendo al inicio de sesión...
-            </div>
-          )}
-
+        <form onSubmit={handleSubmit} className="bg-white border border-slate-100 p-6 sm:p-8 rounded-[24px] shadow-xs space-y-4">
+          
+          {/* NOMBRE Y APELLIDO SEPARADOS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+            <div>
+              <label className="block text-xs font-semibold text-[#53627A] mb-1">
                 Nombre *
               </label>
               <input
                 type="text"
+                name="nombre"
                 required
-                value={form.nombre}
-                onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-                className="w-full bg-[#F8FAF9] border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-[#1F2937] focus:outline-none focus:border-[#2E7D5B] focus:bg-white transition-colors"
-                placeholder="Ej: Juan"
+                value={formData.nombre}
+                onChange={handleChange}
+                placeholder="Ej: Laura"
+                className="w-full bg-[#EEF2FC] border border-slate-200 rounded-full px-4 py-2.5 text-xs text-[#292A2F] focus:outline-none focus:border-[#5E7BC4] focus:bg-white"
               />
             </div>
-            <div className="space-y-1">
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+
+            <div>
+              <label className="block text-xs font-semibold text-[#53627A] mb-1">
                 Apellido *
               </label>
               <input
                 type="text"
+                name="apellido"
                 required
-                value={form.apellido}
-                onChange={(e) => setForm({ ...form, apellido: e.target.value })}
-                className="w-full bg-[#F8FAF9] border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-[#1F2937] focus:outline-none focus:border-[#2E7D5B] focus:bg-white transition-colors"
-                placeholder="Ej: Pérez"
+                value={formData.apellido}
+                onChange={handleChange}
+                placeholder="Ej: Zapata"
+                className="w-full bg-[#EEF2FC] border border-slate-200 rounded-full px-4 py-2.5 text-xs text-[#292A2F] focus:outline-none focus:border-[#5E7BC4] focus:bg-white"
               />
             </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+          {formData.rol === 'REFUGIO' && (
+            <div>
+              <label className="block text-xs font-semibold text-[#53627A] mb-1">
+                Nombre del Refugio o Fundación *
+              </label>
+              <input
+                type="text"
+                name="nombreOrganizacion"
+                required
+                value={formData.nombreOrganizacion}
+                onChange={handleChange}
+                placeholder="Ej: Fundación Huellitas Medellín"
+                className="w-full bg-[#EEF2FC] border border-slate-200 rounded-full px-4 py-2.5 text-xs text-[#292A2F] focus:outline-none focus:border-[#5E7BC4] focus:bg-white"
+              />
+            </div>
+          )}
+
+          {/* CORREO */}
+          <div>
+            <label className="block text-xs font-semibold text-[#53627A] mb-1">
               Correo Electrónico *
             </label>
             <input
               type="email"
+              name="correo"
               required
-              value={form.correo}
-              onChange={(e) => setForm({ ...form, correo: e.target.value })}
-              className="w-full bg-[#F8FAF9] border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-[#1F2937] focus:outline-none focus:border-[#2E7D5B] focus:bg-white transition-colors"
-              placeholder="tu.correo@ejemplo.com"
+              value={formData.correo}
+              onChange={handleChange}
+              placeholder="tucorreo@ejemplo.com"
+              className="w-full bg-[#EEF2FC] border border-slate-200 rounded-full px-4 py-2.5 text-xs text-[#292A2F] focus:outline-none focus:border-[#5E7BC4] focus:bg-white"
             />
           </div>
 
-          <div className="space-y-1">
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-              Teléfono / Celular (Opcional)
+          {/* TELÉFONO */}
+          <div>
+            <label className="block text-xs font-semibold text-[#53627A] mb-1">
+              Teléfono (Opcional)
             </label>
             <input
               type="tel"
-              value={form.telefono}
-              onChange={(e) => setForm({ ...form, telefono: e.target.value })}
-              className="w-full bg-[#F8FAF9] border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-[#1F2937] focus:outline-none focus:border-[#2E7D5B] focus:bg-white transition-colors"
-              placeholder="Ej: 300 123 4567"
+              name="telefono"
+              value={formData.telefono}
+              onChange={handleChange}
+              placeholder="Ej: 3001234567"
+              className="w-full bg-[#EEF2FC] border border-slate-200 rounded-full px-4 py-2.5 text-xs text-[#292A2F] focus:outline-none focus:border-[#5E7BC4] focus:bg-white"
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                Contraseña *
-              </label>
-              <input
-                type="password"
-                required
-                minLength={6}
-                value={form.contrasena}
-                onChange={(e) => setForm({ ...form, contrasena: e.target.value })}
-                className="w-full bg-[#F8FAF9] border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-[#1F2937] focus:outline-none focus:border-[#2E7D5B] focus:bg-white transition-colors"
-                placeholder="••••••••"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                Confirmar *
-              </label>
-              <input
-                type="password"
-                required
-                minLength={6}
-                value={form.confirmarContrasena}
-                onChange={(e) => setForm({ ...form, confirmarContrasena: e.target.value })}
-                className="w-full bg-[#F8FAF9] border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-[#1F2937] focus:outline-none focus:border-[#2E7D5B] focus:bg-white transition-colors"
-                placeholder="••••••••"
-              />
-            </div>
+          {/* CONTRASEÑA */}
+          <div>
+            <label className="block text-xs font-semibold text-[#53627A] mb-1">
+              Contraseña *
+            </label>
+            <input
+              type="password"
+              name="contrasena"
+              required
+              value={formData.contrasena}
+              onChange={handleChange}
+              placeholder="Mínimo 6 caracteres"
+              className="w-full bg-[#EEF2FC] border border-slate-200 rounded-full px-4 py-2.5 text-xs text-[#292A2F] focus:outline-none focus:border-[#5E7BC4] focus:bg-white"
+            />
           </div>
 
-          <button
-            type="submit"
-            disabled={cargando}
-            className="w-full bg-[#2E7D5B] hover:bg-[#4CAF78] text-white font-bold py-3.5 rounded-xl transition-all shadow-md text-sm mt-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-          >
-            {cargando ? 'Creando Cuenta...' : 'Crear Cuenta'}
-          </button>
-
-          <div className="text-center pt-2 border-t border-slate-100">
-            <p className="text-xs text-[#6B7280]">
-              ¿Ya tienes una cuenta?{' '}
-              <Link href="/login" className="font-bold text-[#2E7D5B] hover:underline">
-                Inicia sesión aquí
-              </Link>
-            </p>
+          {/* CONFIRMAR CONTRASEÑA */}
+          <div>
+            <label className="block text-xs font-semibold text-[#53627A] mb-1">
+              Confirmar Contraseña *
+            </label>
+            <input
+              type="password"
+              name="confirmContrasena"
+              required
+              value={formData.confirmContrasena}
+              onChange={handleChange}
+              placeholder="Repite tu contraseña"
+              className="w-full bg-[#EEF2FC] border border-slate-200 rounded-full px-4 py-2.5 text-xs text-[#292A2F] focus:outline-none focus:border-[#5E7BC4] focus:bg-white"
+            />
           </div>
+
+          <div className="pt-2">
+            <button
+              type="submit"
+              disabled={cargando}
+              className="w-full bg-[#5E7BC4] hover:bg-[#4F6FB8] text-white font-bold py-3.5 rounded-full transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 text-xs sm:text-sm"
+            >
+              {cargando ? 'Creando cuenta...' : 'Registrarme'}
+            </button>
+          </div>
+
+          <p className="text-center text-xs text-[#53627A] pt-2">
+            ¿Ya tienes una cuenta?{' '}
+            <Link href="/login" className="text-[#5E7BC4] font-bold hover:underline">
+              Inicia sesión aquí
+            </Link>
+          </p>
         </form>
-
-        {/* VOLVER AL INICIO */}
-        <div className="text-center">
-          <Link href="/" className="text-xs font-medium text-[#6B7280] hover:text-[#2E7D5B] transition-colors">
-            ← Volver a la página principal
-          </Link>
-        </div>
 
       </div>
     </main>
