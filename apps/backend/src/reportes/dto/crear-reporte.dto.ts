@@ -1,48 +1,52 @@
-import { IsNotEmpty, IsString, IsEnum, IsOptional, IsDateString } from 'class-validator';
-
-export enum TipoReporte {
-  PERDIDO = 'PERDIDO',
-  ENCONTRADO = 'ENCONTRADO',
-}
+import { IsString, IsNotEmpty, IsOptional, IsNumber } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CrearReporteDto {
-  // Datos de la Mascota
-  @IsOptional()
   @IsString()
-  nombreMascota?: string;
+  @IsNotEmpty({ message: 'El tipo de reporte es obligatorio' })
+  tipoReporte: string;
 
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'La descripción es obligatoria' })
+  descripcion: string;
+
+  @IsString()
+  @IsNotEmpty({ message: 'La dirección es obligatoria' })
+  direccion: string;
+
+  @Type(() => Number)
+  @IsNumber({}, { message: 'La latitud debe ser numérica' })
+  latitud: number;
+
+  @Type(() => Number)
+  @IsNumber({}, { message: 'La longitud debe ser numérica' })
+  longitud: number;
+
+  @IsString()
+  @IsNotEmpty({ message: 'La fecha del evento es obligatoria' })
+  fechaEvento: string;
+
+  @IsString()
+  @IsNotEmpty({ message: 'El nombre de la mascota es obligatorio' })
+  nombre: string;
+
+  @IsString()
+  @IsNotEmpty({ message: 'La especie es obligatoria' })
   especie: string;
 
   @IsOptional()
   @IsString()
   raza?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  color: string;
-
-  @IsString()
-  @IsNotEmpty()
-  tamano: string;
-
-  @IsString()
-  @IsNotEmpty()
-  sexo: string;
+  color?: string;
 
   @IsOptional()
   @IsString()
-  caracteristicasEspeciales?: string;
+  tamano?: string;
 
-  // Datos del Reporte
-  @IsEnum(TipoReporte, { message: 'El tipo de reporte debe ser PERDIDO o ENCONTRADO' })
-  tipoReporte: TipoReporte;
-
-  @IsDateString({}, { message: 'La fecha del evento debe ser una fecha válida (ISO 8601)' })
-  fechaEvento: string;
-
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  descripcion: string;
+  sexo?: string;
 }

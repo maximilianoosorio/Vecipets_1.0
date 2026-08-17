@@ -37,8 +37,8 @@ export class Usuario {
   @Column({ name: 'contrasena_hash', length: 255 })
   contrasenaHash?: string;
 
-  @Column({ length: 20, nullable: true })
-  telefono: string;
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  telefono: string | null;
 
   @Column({ default: true })
   activo: boolean;

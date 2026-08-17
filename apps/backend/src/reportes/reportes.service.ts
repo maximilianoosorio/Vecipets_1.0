@@ -28,43 +28,44 @@ export class ReportesService {
     usuarioLogueado: Usuario,
     archivosImagenes: Express.Multer.File[],
   ) {
+    // Crear Mascota con las propiedades exactas del DTO
     const nuevaMascota = this.mascotaRepo.create({
-      nombre: dto.nombreMascota || 'Sin Nombre',
+      nombre: dto.nombre || 'Sin Nombre',
       especie: dto.especie,
       raza: dto.raza,
       color: dto.color,
       tamano: dto.tamano,
       sexo: dto.sexo,
-      caracteristicasEspeciales: dto.caracteristicasEspeciales,
       usuario: usuarioLogueado,
     });
     const mascotaGuardada = await this.mascotaRepo.save(nuevaMascota);
 
+    // Crear Reporte con latitud, longitud y dirección tipadas
     const datosReporte: any = {
       mascota: mascotaGuardada,
       usuario: usuarioLogueado,
       tipoReporte: dto.tipoReporte,
       fechaEvento: dto.fechaEvento ? new Date(dto.fechaEvento) : new Date(),
       descripcion: dto.descripcion,
+      direccion: dto.direccion,
+      latitud: dto.latitud ? Number(dto.latitud) : null,
+      longitud: dto.longitud ? Number(dto.longitud) : null,
       estado: (dto as any).estado || 'PUBLICADO',
     };
-
-    if ((dto as any).latitud) datosReporte.latitud = (dto as any).latitud;
-    if ((dto as any).longitud) datosReporte.longitud = (dto as any).longitud;
-    if ((dto as any).direccion) datosReporte.direccion = (dto as any).direccion;
 
     const nuevoReporte = this.reporteRepo.create(datosReporte);
     const reporteGuardado: any = await this.reporteRepo.save(nuevoReporte);
 
+    // Subida a Cloudinary
     if (archivosImagenes && archivosImagenes.length > 0) {
       for (const archivo of archivosImagenes) {
         try {
-          const resultadoCloudinary = await this.cloudinaryService.subirImagen(archivo);
+          const resultadoCloudinary: any = await this.cloudinaryService.subirImagen(archivo);
           
           const nuevaImagen = this.imagenRepo.create({
             mascota: mascotaGuardada,
             reporte: reporteGuardado,
-            urlCloudinary: resultadoCloudinary.secure_url,
+            urlCloudinary: resultadoCloudinary.secure_url || resultadoCloudinary.url,
             publicId: resultadoCloudinary.public_id,
           });
           await this.imagenRepo.save(nuevaImagen);
