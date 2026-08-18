@@ -8,36 +8,37 @@ import {
   OneToMany,
 } from 'typeorm';
 import { Usuario } from './usuario.entity';
+import { Imagen } from './reporte.entity';
 
 @Entity('mascotas')
 export class Mascota {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => Usuario, { onDelete: 'CASCADE' })
+  @Column({ nullable: true })
+  nombre: string;
+
+  @Column({ default: 'PERRO' })
+  especie: string;
+
+  @Column({ nullable: true })
+  raza: string;
+
+  @Column({ nullable: true })
+  color: string;
+
+  @Column({ nullable: true })
+  tamano: string;
+
+  @Column({ nullable: true })
+  sexo: string;
+
+  @ManyToOne(() => Usuario, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'usuario_id' })
   usuario: Usuario;
 
-  @Column({ length: 50, nullable: true })
-  nombre: string;
-
-  @Column({ length: 30 })
-  especie: string; // Perro, Gato, etc.
-
-  @Column({ length: 50, nullable: true })
-  raza: string;
-
-  @Column({ length: 50 })
-  color: string;
-
-  @Column({ length: 20 })
-  tamano: string; // Pequeño, Mediano, Grande
-
-  @Column({ length: 10 })
-  sexo: string;
-
-  @Column({ type: 'text', name: 'caracteristicas_especiales', nullable: true })
-  caracteristicasEspeciales: string;
+  @OneToMany(() => Imagen, (imagen) => imagen.mascota)
+  imagenes: Imagen[];
 
   @CreateDateColumn({ name: 'creado_en' })
   creadoEn: Date;

@@ -16,28 +16,58 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      // 🔴 CAMBIO AQUÍ: Usamos getOrThrow para garantizar que el tipo sea 'string' y no 'string | undefined'
-      secretOrKey: configService.getOrThrow<string>('JWT_SECRET'),
+      secretOrKey:
+        configService.get<string>('JWT_SECRET') ||
+        process.env.JWT_SECRET ||
+        'secretKey',
     });
   }
 
-  async validate(payload: { sub: string; correo: string; rol: string }) {
-    const { sub: id } = payload;
-    const usuario = await this.usuarioRepo.findOne({
-      where: { id, activo: true },
-      relations: { rol: true },
-    });
+  async validate(payload: any) {
+    const userId = payload.sub || payload.id;
 
-    if (!usuario) {
-      throw new UnauthorizedException('Token inválido o usuario inactivo');
+    if (!userId) {
+      throw new UnauthorizedException('Token sin identificación de usuario');
     }
 
+    // 1. Buscar usuario sin bloquear por si 'activo' viene null en Supabase
+    let usuario: any = null;
+    try {
+      usuario = await this.usuarioRepo.findOne({
+        where: { id: userId },
+        relations: { rol: true },
+      });
+    } catch {
+      usuario = await this.usuarioRepo.findOne({
+        where: { id: userId },
+      });
+    }
+
+    if (!usuario) {
+      throw new UnauthorizedException('Usuario no encontrado en el sistema');
+    }
+
+    // 2. Solo rechazar si está explícitamente inactivo en false
+    if (usuario.activo === false) {
+      throw new UnauthorizedException('Tu cuenta se encuentra inactiva');
+    }
+
+    // 3. Extraer rol de forma segura
+    const rolNombre =
+      usuario.rol?.nombre ||
+      (typeof usuario.rol === 'string' ? usuario.rol : payload.rol || 'CIUDADANO');
+
+    const correoFinal = usuario.correo || usuario.email || payload.correo || payload.email;
+
+    // 4. Inyectar usuario limpio en req.user
     return {
       id: usuario.id,
-      correo: usuario.correo,
-      nombre: usuario.nombre,
-      apellido: usuario.apellido,
-      rol: usuario.rol.nombre,
+      sub: usuario.id,
+      correo: correoFinal,
+      email: correoFinal,
+      nombre: usuario.nombre || '',
+      apellido: usuario.apellido || '',
+      rol: rolNombre,
     };
   }
 }

@@ -1,6 +1,6 @@
 import { Express } from 'express';
 import 'multer';
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -33,113 +33,109 @@ export class ReportesService {
   // 1. Crear un nuevo reporte con persistencia garantizada en Supabase
   async crearReporte(
     dto: CrearReporteDto,
-    usuarioLogueado: Usuario,
+    usuarioLogueado: any,
     archivosImagenes: Express.Multer.File[] = [],
   ) {
-    const rawDto = dto as any;
+    try {
+      const rawDto = dto as any;
 
-    // Crear y guardar Mascota
-    const nuevaMascota = this.mascotaRepo.create({
-      nombre: rawDto.nombre?.trim() || rawDto.nombreMascota?.trim() || 'Sin Nombre',
-      especie: (rawDto.especie || 'PERRO').toUpperCase(),
-      raza: rawDto.raza?.trim() || 'Mestizo',
-      color: rawDto.color?.trim() || 'No especificado',
-      tamano: rawDto.tamano || 'Mediano',
-      sexo: rawDto.sexo || 'DESCONOCIDO',
-      usuario: usuarioLogueado,
-    });
-    const mascotaGuardada = await this.mascotaRepo.save(nuevaMascota);
-
-    // Coordenadas con fallback a Medellín
-    const rawLat = rawDto.latitud ?? rawDto.lat;
-    const rawLng = rawDto.longitud ?? rawDto.lng;
-
-    const latParsed =
-      rawLat !== undefined && rawLat !== null && rawLat !== ''
-        ? Number(rawLat)
-        : DEFAULT_LATITUD;
-
-    const lngParsed =
-      rawLng !== undefined && rawLng !== null && rawLng !== ''
-        ? Number(rawLng)
-        : DEFAULT_LONGITUD;
-
-    // Crear y guardar Reporte
-    const nuevoReporte = this.reporteRepo.create({
-      mascota: mascotaGuardada,
-      usuario: usuarioLogueado,
-      tipoReporte: (rawDto.tipoReporte || rawDto.tipo_reporte || 'PERDIDO').toUpperCase(),
-      fechaEvento: rawDto.fechaEvento ? new Date(rawDto.fechaEvento) : new Date(),
-      descripcion: rawDto.descripcion || 'Sin descripción.',
-      direccion: rawDto.direccion?.trim() || DEFAULT_DIRECCION,
-      latitud: isNaN(latParsed) ? DEFAULT_LATITUD : latParsed,
-      longitud: isNaN(lngParsed) ? DEFAULT_LONGITUD : lngParsed,
-      estado: rawDto.estado || 'PUBLICADO',
-    } as any);
-
-    const reporteGuardado: any = await this.reporteRepo.save(nuevoReporte);
-
-    // --- MANEJO ROBUSTO DE IMÁGENES ---
-    const imagenesParaGuardar: { url: string; publicId?: string }[] = [];
-
-    // A) Si llegaron archivos binarios (Multer), subirlos a Cloudinary
-    if (archivosImagenes && archivosImagenes.length > 0) {
-      for (const archivo of archivosImagenes) {
-        try {
-          const resultado: any = await this.cloudinaryService.subirImagen(archivo);
-          if (resultado?.secure_url || resultado?.url) {
-            imagenesParaGuardar.push({
-              url: resultado.secure_url || resultado.url,
-              publicId: resultado.public_id || null,
-            });
-          }
-        } catch (error) {
-          this.logger.error(`Error al subir archivo a Cloudinary: ${error.message}`, error.stack);
-        }
-      }
-    }
-
-    // B) Si llegaron URLs directas en el DTO (JSON/Frontend)
-    const urlsDto = [
-      ...(Array.isArray(rawDto.imagenes) ? rawDto.imagenes : []),
-      ...(Array.isArray(rawDto.fotos) ? rawDto.fotos : []),
-      ...(rawDto.fotoUrl ? [rawDto.fotoUrl] : []),
-      ...(rawDto.url_cloudinary ? [rawDto.url_cloudinary] : []),
-    ];
-
-    for (const item of urlsDto) {
-      const urlString = typeof item === 'string' ? item : item?.url || item?.urlCloudinary || item?.url_cloudinary;
-      if (urlString && typeof urlString === 'string' && urlString.startsWith('http')) {
-        imagenesParaGuardar.push({
-          url: urlString.trim(),
-          publicId: item?.publicId || null,
+      // 1. Obtener la entidad real del usuario en la base de datos
+      const idUsuario = usuarioLogueado?.id || usuarioLogueado?.sub;
+      let usuarioEntidad = null;
+      if (idUsuario) {
+        usuarioEntidad = await this.usuarioRepo.findOne({
+          where: { id: idUsuario },
         });
       }
-    }
 
-    // C) Guardar todas las fotos en la tabla `imagenes` de Supabase
-    if (imagenesParaGuardar.length > 0) {
-      try {
-        const entidadesImagenes = imagenesParaGuardar.map((img) =>
-          this.imagenRepo.create({
-            mascota: mascotaGuardada,
-            reporte: reporteGuardado,
-            urlCloudinary: img.url,
-            publicId: img.publicId,
-          }),
-        );
-        await this.imagenRepo.save(entidadesImagenes);
-        this.logger.log(`Se guardaron ${entidadesImagenes.length} imágenes para el reporte ${reporteGuardado.id}`);
-      } catch (err) {
-        this.logger.error(`Error guardando registros en tabla imagenes: ${err.message}`, err.stack);
+      // 2. Crear y guardar Mascota en Supabase
+      const nuevaMascota = this.mascotaRepo.create({
+        nombre: rawDto.nombre?.trim() || rawDto.nombreMascota?.trim() || 'Sin Nombre',
+        especie: (rawDto.especie || 'PERRO').toUpperCase(),
+        raza: rawDto.raza?.trim() || 'Mestizo',
+        color: rawDto.color?.trim() || 'No especificado',
+        tamano: rawDto.tamano || rawDto.tamaño || 'MEDIANO',
+        sexo: (rawDto.sexo || 'MACHO').toUpperCase(),
+        usuario: usuarioEntidad || undefined,
+      });
+      const mascotaGuardada = await this.mascotaRepo.save(nuevaMascota);
+
+      // 3. Normalizar Coordenadas
+      const rawLat = rawDto.latitud ?? rawDto.lat;
+      const rawLng = rawDto.longitud ?? rawDto.lng;
+
+      const latParsed =
+        rawLat !== undefined && rawLat !== null && rawLat !== ''
+          ? Number(rawLat)
+          : DEFAULT_LATITUD;
+
+      const lngParsed =
+        rawLng !== undefined && rawLng !== null && rawLng !== ''
+          ? Number(rawLng)
+          : DEFAULT_LONGITUD;
+
+      // 4. Crear y guardar Reporte
+      const nuevoReporte = this.reporteRepo.create({
+        mascota: mascotaGuardada,
+        usuario: usuarioEntidad || undefined,
+        tipoReporte: (rawDto.tipoReporte || rawDto.tipo_reporte || 'PERDIDO').toUpperCase(),
+        fechaEvento: rawDto.fechaEvento ? new Date(rawDto.fechaEvento) : new Date(),
+        descripcion: rawDto.descripcion || 'Sin descripción.',
+        direccion: rawDto.direccion?.trim() || DEFAULT_DIRECCION,
+        latitud: isNaN(latParsed) ? DEFAULT_LATITUD : latParsed,
+        longitud: isNaN(lngParsed) ? DEFAULT_LONGITUD : lngParsed,
+        estado: (rawDto.estado || 'PUBLICADO').toUpperCase(),
+      } as any);
+
+      const reporteGuardado: any = await this.reporteRepo.save(nuevoReporte);
+
+      // 5. Manejo de Imágenes (Cloudinary + Supabase)
+      const imagenesParaGuardar: { url: string; publicId?: string }[] = [];
+
+      // A) Subir archivos recibidos por Multer
+      if (archivosImagenes && archivosImagenes.length > 0) {
+        for (const archivo of archivosImagenes) {
+          try {
+            const resultado: any = await this.cloudinaryService.subirImagen(archivo);
+            if (resultado?.secure_url || resultado?.url) {
+              imagenesParaGuardar.push({
+                url: resultado.secure_url || resultado.url,
+                publicId: resultado.public_id || null,
+              });
+            }
+          } catch (error: any) {
+            this.logger.error(`Error al subir a Cloudinary: ${error.message}`);
+          }
+        }
       }
-    }
 
-    return {
-      mensaje: 'Reporte registrado exitosamente',
-      reporteId: reporteGuardado.id,
-      imagenesSubidas: imagenesParaGuardar.length,
-    };
+      // B) Guardar registros en la tabla 'imagenes'
+      if (imagenesParaGuardar.length > 0) {
+        try {
+          const entidadesImagenes = imagenesParaGuardar.map((img) =>
+            this.imagenRepo.create({
+              mascota: mascotaGuardada,
+              reporte: reporteGuardado,
+              urlCloudinary: img.url,
+              publicId: img.publicId || null,
+            }),
+          );
+          await this.imagenRepo.save(entidadesImagenes);
+          this.logger.log(`✅ Se guardaron ${entidadesImagenes.length} imágenes para el reporte ${reporteGuardado.id}`);
+        } catch (err: any) {
+          this.logger.error(`Error guardando en tabla imagenes: ${err.message}`, err.stack);
+        }
+      }
+
+      return {
+        mensaje: 'Reporte registrado exitosamente',
+        reporteId: reporteGuardado.id,
+        imagenesSubidas: imagenesParaGuardar.length,
+      };
+    } catch (error: any) {
+      this.logger.error('🔥 Error crítico al crear reporte en Supabase:', error.message || error);
+      throw new BadRequestException(error.message || 'Error al guardar el reporte');
+    }
   }
 
   // 2. Obtener reportes públicos con imágenes garantizadas
@@ -174,7 +170,7 @@ export class ReportesService {
     }
 
     if (reporte.usuario) {
-      const { contrasenaHash, password, ...usuarioLimpio } = reporte.usuario;
+      const { contrasenaHash, contrasena_hash, password, ...usuarioLimpio } = reporte.usuario;
       reporte.usuario = usuarioLimpio;
     }
 
@@ -264,7 +260,8 @@ export class ReportesService {
       })
       .filter((img: any) => Boolean(img.url));
 
-    const fotoPrincipal = fotosMapeadas[0]?.url || r.mascota?.fotoUrl || r.mascota?.foto_url || null;
+    const fotoPrincipal =
+      fotosMapeadas[0]?.url || r.mascota?.fotoUrl || r.mascota?.foto_url || null;
 
     return {
       ...r,
