@@ -25,60 +25,79 @@ export class AuthService {
     private readonly mailerService: MailerService,
   ) {}
 
+  // 1. REGISTRO
   async registrar(registroDto: RegistroDto) {
-    const { correo, contrasena, nombre, apellido, telefono, rol } = registroDto;
+    const rawDto = registroDto as any;
+    const correoRaw = rawDto.correo || rawDto.email;
+    const passwordRaw = rawDto.contrasena || rawDto.password;
+    const nombre = rawDto.nombre?.trim() || '';
+    const apellido = rawDto.apellido?.trim() || '';
+    const telefono = rawDto.telefono || null;
+    const rol = rawDto.rol;
+
+    if (!correoRaw || !passwordRaw) {
+      throw new UnauthorizedException('Correo y contraseña son obligatorios');
+    }
+
+    const emailNormalizado = correoRaw.toLowerCase().trim();
 
     // 1. Verificar si el correo ya existe
     const usuarioExiste = await this.usuarioRepo.findOne({ 
-      where: { correo: correo.toLowerCase().trim() } 
+      where: { correo: emailNormalizado },
     });
     
     if (usuarioExiste) {
       throw new ConflictException('El correo ya se encuentra registrado');
     }
 
-    // 2. Buscar el rol solicitado (por defecto CIUDADANO)
-    const nombreRol = rol?.toUpperCase() === 'REFUGIO' ? 'REFUGIO' : 'CIUDADANO';
-    const rolEntidad = await this.rolRepo.findOne({
+    // 2. Buscar el rol (por defecto CIUDADANO)
+    const nombreRol = (rol?.toUpperCase() === 'REFUGIO') ? 'REFUGIO' : 'CIUDADANO';
+    let rolEntidad = await this.rolRepo.findOne({
       where: { nombre: nombreRol },
     });
 
     if (!rolEntidad) {
-      throw new NotFoundException(`El rol ${nombreRol} no fue encontrado en la base de datos.`);
+      rolEntidad = await this.rolRepo.findOne({ where: { nombre: 'CIUDADANO' } });
     }
 
     // 3. Cifrar contraseña
-    const contrasenaHash = await bcrypt.hash(contrasena, 10);
+    const contrasenaHash = await bcrypt.hash(passwordRaw, 10);
 
-    // 4. Crear entidad con telefono y guardar en Supabase
+    // 4. Crear entidad con activo: true garantizado
     const nuevoUsuario = this.usuarioRepo.create({
       nombre,
       apellido,
-      correo: correo.toLowerCase().trim(),
-      telefono: telefono || null,
+      correo: emailNormalizado,
+      telefono,
       contrasenaHash,
       rol: rolEntidad,
-    });
+      activo: true, // 👈 SOLUCIÓN CLAVE: Siempre activo al registrarse
+    } as any);
 
-    await this.usuarioRepo.save(nuevoUsuario);
+    const usuarioGuardado: any = await this.usuarioRepo.save(nuevoUsuario);
 
-    // 5. Enviar email de bienvenida (asíncrono sin bloquear la respuesta)
-    this.mailerService
-      ?.sendMail({
-        to: correo,
-        subject: '¡Bienvenido a VeciPets! 🐾',
-        html: `
-          <h2>¡Hola ${nombre}!</h2>
-          <p>Tu cuenta en VeciPets ha sido creada exitosamente como <strong>${rolEntidad.nombre}</strong>.</p>
-        `,
-      })
-      .catch((err) => console.error('Error enviando email:', err));
+    // 5. Enviar email de bienvenida
+    try {
+      this.mailerService
+        ?.sendMail({
+          to: emailNormalizado,
+          subject: '¡Bienvenido a VeciPets! 🐾',
+          html: `
+            <h2>¡Hola ${nombre}!</h2>
+            <p>Tu cuenta en VeciPets ha sido creada exitosamente como <strong>${rolEntidad?.nombre || 'CIUDADANO'}</strong>.</p>
+          `,
+        })
+        .catch((err) => console.error('Error enviando email:', err));
+    } catch (e) {
+      console.warn('Mailer no configurado o error al enviar:', e);
+    }
 
-    // 6. Generar JWT para que quede logueado de inmediato
+    // 6. Generar JWT
     const payload = {
-      sub: nuevoUsuario.id,
-      correo: nuevoUsuario.correo,
-      rol: rolEntidad.nombre,
+      sub: usuarioGuardado.id,
+      correo: usuarioGuardado.correo,
+      email: usuarioGuardado.correo,
+      rol: rolEntidad?.nombre || 'CIUDADANO',
     };
 
     const token = this.jwtService.sign(payload);
@@ -86,56 +105,78 @@ export class AuthService {
     return {
       mensaje: 'Usuario registrado exitosamente',
       access_token: token,
+      token: token,
       usuario: {
-        id: nuevoUsuario.id,
-        nombre: nuevoUsuario.nombre,
-        apellido: nuevoUsuario.apellido,
-        correo: nuevoUsuario.correo,
-        telefono: nuevoUsuario.telefono,
-        rol: rolEntidad.nombre,
+        id: usuarioGuardado.id,
+        nombre: usuarioGuardado.nombre,
+        apellido: usuarioGuardado.apellido,
+        correo: usuarioGuardado.correo,
+        email: usuarioGuardado.correo,
+        telefono: usuarioGuardado.telefono,
+        rol: rolEntidad?.nombre || 'CIUDADANO',
       },
     };
   }
 
+  // 2. LOGIN
   async login(loginDto: LoginDto) {
-    const { correo, contrasena } = loginDto;
+    const rawDto = loginDto as any;
+    const correoRaw = rawDto.correo || rawDto.email;
+    const passwordRaw = rawDto.contrasena || rawDto.password;
 
-    // Buscar usuario activo con su rol
-    const usuario = await this.usuarioRepo.findOne({
-      where: { correo: correo.toLowerCase().trim(), activo: true },
+    if (!correoRaw || !passwordRaw) {
+      throw new UnauthorizedException('Debes ingresar correo y contraseña');
+    }
+
+    const emailNormalizado = correoRaw.toLowerCase().trim();
+
+    // Buscar usuario por correo (sin bloquear si activo viene null en registros anteriores)
+    const usuario: any = await this.usuarioRepo.findOne({
+      where: { correo: emailNormalizado },
       relations: { rol: true },
     });
 
     if (!usuario) {
-      throw new UnauthorizedException('Credenciales inválidas');
+      throw new UnauthorizedException('Credenciales inválidas (correo no encontrado)');
     }
 
-    const contrasenaValida = await bcrypt.compare(
-      contrasena,
-      usuario.contrasenaHash!,
-    );
+    if (usuario.activo === false) {
+      throw new UnauthorizedException('Tu cuenta se encuentra inactiva. Contacta a soporte.');
+    }
+
+    const hash = usuario.contrasenaHash || usuario.contrasena_hash || usuario.password;
+    if (!hash) {
+      throw new UnauthorizedException('Error en las credenciales de la cuenta');
+    }
+
+    const contrasenaValida = await bcrypt.compare(passwordRaw, hash);
 
     if (!contrasenaValida) {
-      throw new UnauthorizedException('Credenciales inválidas');
+      throw new UnauthorizedException('Credenciales inválidas (contraseña incorrecta)');
     }
+
+    const rolNombre = usuario.rol?.nombre || (typeof usuario.rol === 'string' ? usuario.rol : 'CIUDADANO');
 
     const payload = {
       sub: usuario.id,
       correo: usuario.correo,
-      rol: usuario.rol.nombre,
+      email: usuario.correo,
+      rol: rolNombre,
     };
 
     const token = this.jwtService.sign(payload);
 
     return {
       access_token: token,
+      token: token,
       usuario: {
         id: usuario.id,
         nombre: usuario.nombre,
         apellido: usuario.apellido,
         correo: usuario.correo,
+        email: usuario.correo,
         telefono: usuario.telefono,
-        rol: usuario.rol.nombre,
+        rol: rolNombre,
       },
     };
   }
