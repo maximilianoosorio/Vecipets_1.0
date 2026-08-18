@@ -34,8 +34,8 @@ export class Usuario {
   @Column({ unique: true, length: 150 })
   correo: string;
 
-  @Column({ name: 'contrasena_hash', length: 255 })
-  contrasenaHash?: string;
+  @Column({ name: 'contrasena_hash' })
+  contrasenaHash: string;
 
   @Column({ type: 'varchar', length: 20, nullable: true })
   telefono: string | null;

@@ -2,7 +2,6 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
-  NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -42,15 +41,15 @@ export class AuthService {
     const emailNormalizado = correoRaw.toLowerCase().trim();
 
     // 1. Verificar si el correo ya existe
-    const usuarioExiste = await this.usuarioRepo.findOne({ 
+    const usuarioExiste = await this.usuarioRepo.findOne({
       where: { correo: emailNormalizado },
     });
-    
+
     if (usuarioExiste) {
       throw new ConflictException('El correo ya se encuentra registrado');
     }
 
-    // 2. Buscar el rol (por defecto CIUDADANO)
+    // 2. Buscar el rol
     const nombreRol = (rol?.toUpperCase() === 'REFUGIO') ? 'REFUGIO' : 'CIUDADANO';
     let rolEntidad = await this.rolRepo.findOne({
       where: { nombre: nombreRol },
@@ -60,23 +59,24 @@ export class AuthService {
       rolEntidad = await this.rolRepo.findOne({ where: { nombre: 'CIUDADANO' } });
     }
 
-    // 3. Cifrar contraseña
+    // 3. Cifrar contraseña con bcrypt
     const contrasenaHash = await bcrypt.hash(passwordRaw, 10);
 
-    // 4. Crear entidad con activo: true garantizado
+    // 4. Crear entidad respetando las columnas de Supabase
     const nuevoUsuario = this.usuarioRepo.create({
       nombre,
       apellido,
       correo: emailNormalizado,
       telefono,
-      contrasenaHash,
+      contrasenaHash: contrasenaHash,
+      contrasena_hash: contrasenaHash, // Soporte a ambas nomenclaturas
       rol: rolEntidad,
-      activo: true, // 👈 SOLUCIÓN CLAVE: Siempre activo al registrarse
+      activo: true,
     } as any);
 
     const usuarioGuardado: any = await this.usuarioRepo.save(nuevoUsuario);
 
-    // 5. Enviar email de bienvenida
+    // 5. Enviar email de bienvenida (sin bloquear si falla)
     try {
       this.mailerService
         ?.sendMail({
@@ -87,17 +87,18 @@ export class AuthService {
             <p>Tu cuenta en VeciPets ha sido creada exitosamente como <strong>${rolEntidad?.nombre || 'CIUDADANO'}</strong>.</p>
           `,
         })
-        .catch((err) => console.error('Error enviando email:', err));
+        ?.catch((err) => console.error('Error enviando email:', err));
     } catch (e) {
-      console.warn('Mailer no configurado o error al enviar:', e);
+      console.warn('Mailer no configurado:', e);
     }
 
     // 6. Generar JWT
+    const rolNombre = rolEntidad?.nombre || 'CIUDADANO';
     const payload = {
       sub: usuarioGuardado.id,
       correo: usuarioGuardado.correo,
       email: usuarioGuardado.correo,
-      rol: rolEntidad?.nombre || 'CIUDADANO',
+      rol: rolNombre,
     };
 
     const token = this.jwtService.sign(payload);
@@ -113,12 +114,12 @@ export class AuthService {
         correo: usuarioGuardado.correo,
         email: usuarioGuardado.correo,
         telefono: usuarioGuardado.telefono,
-        rol: rolEntidad?.nombre || 'CIUDADANO',
+        rol: rolNombre,
       },
     };
   }
 
-  // 2. LOGIN
+  // 2. LOGIN (ADAPTADO A SUPABASE)
   async login(loginDto: LoginDto) {
     const rawDto = loginDto as any;
     const correoRaw = rawDto.correo || rawDto.email;
@@ -130,12 +131,9 @@ export class AuthService {
 
     const emailNormalizado = correoRaw.toLowerCase().trim();
 
-   // Buscar usuario por correo o email en Supabase
+    // 1. Buscar usuario por correo y cargar su rol
     const usuario: any = await this.usuarioRepo.findOne({
-      where: [
-        { correo: emailNormalizado },
-        { email: emailNormalizado } as any,
-      ],
+      where: { correo: emailNormalizado },
       relations: { rol: true },
     });
 
@@ -143,23 +141,29 @@ export class AuthService {
       throw new UnauthorizedException('Credenciales inválidas (correo no encontrado)');
     }
 
+    // 2. Verificar estado de la cuenta
     if (usuario.activo === false) {
       throw new UnauthorizedException('Tu cuenta se encuentra inactiva. Contacta a soporte.');
     }
 
-    const hash = usuario.contrasenaHash || usuario.contrasena_hash || usuario.password;
+    // 3. Extraer el hash soportando 'contrasena_hash' de Supabase y 'contrasenaHash' de TypeORM
+    const hash = usuario.contrasena_hash || usuario.contrasenaHash || usuario.password;
+
     if (!hash) {
-      throw new UnauthorizedException('Error en las credenciales de la cuenta');
+      throw new UnauthorizedException('Error en las credenciales registradas de la cuenta');
     }
 
+    // 4. Validar contraseña con bcrypt
     const contrasenaValida = await bcrypt.compare(passwordRaw, hash);
 
     if (!contrasenaValida) {
       throw new UnauthorizedException('Credenciales inválidas (contraseña incorrecta)');
     }
 
+    // 5. Normalizar rol
     const rolNombre = usuario.rol?.nombre || (typeof usuario.rol === 'string' ? usuario.rol : 'CIUDADANO');
 
+    // 6. Generar JWT
     const payload = {
       sub: usuario.id,
       correo: usuario.correo,
