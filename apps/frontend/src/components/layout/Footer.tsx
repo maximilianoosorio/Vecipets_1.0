@@ -1,14 +1,12 @@
 import Link from 'next/link';
-import Image from 'next/image';
 
 export default function Footer() {
-  // 🔗 Modifica aquí con los enlaces reales de tu proyecto
   const socialLinks = {
-    instagram: 'https://instagram.com/', // ej: https://instagram.com/vecipets_col
+    instagram: 'https://instagram.com/',
     facebook: 'https://facebook.com/',
     tiktok: 'https://tiktok.com/',
     twitter: 'https://x.com/',
-    whatsapp: 'https://wa.me/573000000000', // Opcional para atención o soporte comunitario
+    whatsapp: 'https://wa.me/573000000000',
   };
 
   return (
@@ -19,14 +17,10 @@ export default function Footer() {
           {/* COLUMNA 1: LOGO, DESCRIPCIÓN Y REDES */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="relative w-8 h-8 rounded-full overflow-hidden flex items-center justify-center bg-white/10">
-                <Image
-                  src="/logo.svg"
-                  alt="Logo VeciPets"
-                  width={32}
-                  height={32}
-                  className="object-contain"
-                />
+              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#4A65AB] via-[#5E7BC4] to-[#7B93DB] flex items-center justify-center text-white shadow-xs">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 14c-1.66 0-3 1.34-3 3 0 1.66 1.34 3 3 3s3-1.34 3-3c0-1.66-1.34-3-3-3zm-6-4c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-9-4C8 6 7.1 6.9 7.1 8s.9 2 2 2 2-.9 2-2-.9-2-2.1-2zm6 0c-.9 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                </svg>
               </div>
               <span className="text-2xl font-bold tracking-tight text-white">VeciPets</span>
             </div>
