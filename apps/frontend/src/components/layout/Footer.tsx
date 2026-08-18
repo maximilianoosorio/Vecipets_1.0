@@ -14,13 +14,15 @@ export default function Footer() {
       <div className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           
-          {/* COLUMNA 1: LOGO, DESCRIPCIÓN Y REDES */}
+          {/* COLUMNA 1: LOGO OFICIAL, DESCRIPCIÓN Y REDES */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#4A65AB] via-[#5E7BC4] to-[#7B93DB] flex items-center justify-center text-white shadow-xs">
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 14c-1.66 0-3 1.34-3 3 0 1.66 1.34 3 3 3s3-1.34 3-3c0-1.66-1.34-3-3-3zm-6-4c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-9-4C8 6 7.1 6.9 7.1 8s.9 2 2 2 2-.9 2-2-.9-2-2.1-2zm6 0c-.9 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                </svg>
+              <div className="w-8 h-8 flex items-center justify-center">
+                <img
+                  src="/logo.svg"
+                  alt="Logo VeciPets"
+                  className="w-full h-full object-contain"
+                />
               </div>
               <span className="text-2xl font-bold tracking-tight text-white">VeciPets</span>
             </div>

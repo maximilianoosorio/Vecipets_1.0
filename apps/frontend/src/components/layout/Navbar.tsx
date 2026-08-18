@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 
 interface UsuarioSesion {
@@ -54,17 +53,18 @@ export default function Navbar() {
       <div className="max-w-[1240px] h-full mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         
         {/* LOGO OFICIAL VECIPETS */}
-       <Link href="/" className="flex items-center gap-2.5 group">
-  <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#4A65AB] via-[#5E7BC4] to-[#7B93DB] flex items-center justify-center text-white shadow-xs transition-transform group-hover:scale-105">
-    {/* Si tienes el SVG de tu logo, solo reemplazas este path por el tuyo */}
-    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12 14c-1.66 0-3 1.34-3 3 0 1.66 1.34 3 3 3s3-1.34 3-3c0-1.66-1.34-3-3-3zm-6-4c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-9-4C8 6 7.1 6.9 7.1 8s.9 2 2 2 2-.9 2-2-.9-2-2.1-2zm6 0c-.9 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-    </svg>
-  </div>
-  <span className="text-2xl font-bold tracking-tight text-[#5E7BC4]">
-    VeciPets
-  </span>
-</Link>
+        <Link href="/" className="flex items-center gap-2.5 group">
+          <div className="w-10 h-10 flex items-center justify-center transition-transform group-hover:scale-105">
+            <img
+              src="/logo.svg"
+              alt="Logo VeciPets"
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <span className="text-2xl font-bold tracking-tight text-[#5E7BC4]">
+            VeciPets
+          </span>
+        </Link>
 
         {/* NAVEGACIÓN DESKTOP */}
         <nav className="hidden md:flex items-center gap-7">
