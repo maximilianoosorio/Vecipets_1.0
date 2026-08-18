@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { fetchAPI } from '@/lib/api-client';
 
 const MapaSelectorUbicacion = dynamic(
   () => import('@/components/mapa/MapaSelectorUbicacion'),
@@ -51,7 +50,9 @@ export default function ReportarPage() {
     }
   }, [router]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -79,9 +80,14 @@ export default function ReportarPage() {
     setEnviando(true);
 
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      if (!token) {
+        throw new Error('Debes iniciar sesión para publicar un reporte.');
+      }
+
       const dataPayload = new FormData();
-      
-      // 1. Datos que coinciden exactamente con CrearReporteDto
+
+      // 1. Datos del reporte
       dataPayload.append('tipoReporte', formData.tipoReporte);
       dataPayload.append('descripcion', formData.descripcion);
       dataPayload.append('direccion', formData.direccion || 'Medellín, Antioquia');
@@ -90,35 +96,54 @@ export default function ReportarPage() {
       dataPayload.append('fechaEvento', formData.fechaEvento);
 
       // 2. Datos de la mascota
-      const nombreMascota = formData.tipoReporte === 'PERDIDO' 
-        ? (formData.nombre.trim() || 'Sin nombre')
-        : (formData.nombre.trim() || 'Mascota rescatada');
+      const nombreMascota =
+        formData.tipoReporte === 'PERDIDO'
+          ? formData.nombre.trim() || 'Sin nombre'
+          : formData.nombre.trim() || 'Mascota rescatada';
 
       dataPayload.append('nombre', nombreMascota);
       dataPayload.append('especie', formData.especie);
-      dataPayload.append('raza', formData.raza || 'Mestizo');
-      dataPayload.append('color', formData.color || 'No especificado');
+      dataPayload.append('raza', formData.raza.trim() || 'Mestizo');
+      dataPayload.append('color', formData.color.trim() || 'No especificado');
       dataPayload.append('tamano', formData.tamano);
       dataPayload.append('sexo', formData.sexo);
 
-      // 3. Archivo con la clave 'imagenes' para FilesInterceptor('imagenes', 5)
+      // 3. Adjuntar archivo con múltiples claves para compatibilidad total
       if (fotoArchivo) {
         dataPayload.append('imagenes', fotoArchivo);
+        dataPayload.append('fotos', fotoArchivo);
       }
 
-      await fetchAPI('/reportes', {
+      // 4. Envío directo al backend
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+      const res = await fetch(`${baseUrl}/reportes`, {
         method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          // Nota: NO colocar Content-Type para que el navegador genere multipart boundary automáticamente
+        },
         body: dataPayload,
       });
+
+      const resData = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        const errorMsg = Array.isArray(resData.message)
+          ? resData.message.join(', ')
+          : resData.message || 'Error al procesar el reporte en el servidor.';
+        throw new Error(errorMsg);
+      }
+
+      // Limpiar preview y redirigir
+      if (fotoPreview) {
+        URL.revokeObjectURL(fotoPreview);
+      }
 
       router.push('/reportes');
     } catch (err: any) {
       console.error('Error al publicar el reporte:', err);
-      let errorMsg = err.message || 'Error al publicar el reporte.';
-      if (Array.isArray(err.message)) {
-        errorMsg = err.message.join(', ');
-      }
-      setError(errorMsg);
+      setError(err.message || 'Error al publicar el reporte.');
     } finally {
       setEnviando(false);
     }
@@ -135,7 +160,6 @@ export default function ReportarPage() {
   return (
     <main className="min-h-screen bg-white py-10 px-4 sm:px-6 lg:px-8 font-sans text-[#292A2F]">
       <div className="max-w-3xl mx-auto space-y-8">
-        
         {/* ENCABEZADO */}
         <div className="bg-[#EEF2FC] border border-slate-100 p-6 sm:p-8 rounded-[24px] shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
@@ -166,8 +190,10 @@ export default function ReportarPage() {
         )}
 
         {/* FORMULARIO */}
-        <form onSubmit={handleSubmit} className="bg-white border border-slate-100 p-6 sm:p-8 rounded-[24px] shadow-xs space-y-6">
-          
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white border border-slate-100 p-6 sm:p-8 rounded-[24px] shadow-xs space-y-6"
+        >
           {/* TIPO DE REPORTE */}
           <div>
             <label className="block text-xs font-bold text-[#292A2F] uppercase tracking-wider mb-2">
@@ -203,7 +229,7 @@ export default function ReportarPage() {
           {/* DATOS DE LA MASCOTA */}
           <div className="space-y-4 pt-2 border-t border-slate-100">
             <h3 className="text-sm font-bold text-[#292A2F]">Información de la Mascota</h3>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-[#53627A] mb-1">
@@ -215,7 +241,11 @@ export default function ReportarPage() {
                   required
                   value={formData.nombre}
                   onChange={handleChange}
-                  placeholder={formData.tipoReporte === 'PERDIDO' ? 'Ej: Lucas' : 'Ej: Sin nombre / Encontrado'}
+                  placeholder={
+                    formData.tipoReporte === 'PERDIDO'
+                      ? 'Ej: Lucas'
+                      : 'Ej: Sin nombre / Encontrado'
+                  }
                   className="w-full bg-[#EEF2FC] border border-slate-200 rounded-full px-4 py-2.5 text-xs text-[#292A2F] focus:outline-none focus:border-[#5E7BC4] focus:bg-white"
                 />
               </div>
@@ -306,7 +336,11 @@ export default function ReportarPage() {
             <div className="flex flex-col sm:flex-row items-center gap-4">
               <div className="w-full sm:w-40 h-32 bg-[#EEF2FC] rounded-2xl border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden relative">
                 {fotoPreview ? (
-                  <img src={fotoPreview} alt="Previsualización" className="w-full h-full object-cover" />
+                  <img
+                    src={fotoPreview}
+                    alt="Previsualización"
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
                   <span className="text-3xl text-slate-400">📷</span>
                 )}
@@ -318,7 +352,9 @@ export default function ReportarPage() {
                   onChange={handleFotoChange}
                   className="text-xs text-[#53627A] file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-[#5E7BC4] file:text-white hover:file:bg-[#4F6FB8] cursor-pointer"
                 />
-                <p className="text-[11px] text-[#53627A]">Formatos: JPG, PNG, WEBP (Se sube directo a Cloudinary).</p>
+                <p className="text-[11px] text-[#53627A]">
+                  Formatos: JPG, PNG, WEBP (Se sube directo a Cloudinary y se guarda en Supabase).
+                </p>
               </div>
             </div>
           </div>
@@ -329,7 +365,9 @@ export default function ReportarPage() {
               <label className="block text-xs font-bold text-[#292A2F] uppercase tracking-wider">
                 Lugar de los hechos (Medellín) *
               </label>
-              <span className="text-[11px] text-[#5E7BC4]">Haz clic en el mapa para marcar el punto exacto</span>
+              <span className="text-[11px] text-[#5E7BC4]">
+                Haz clic en el mapa para marcar el punto exacto
+              </span>
             </div>
 
             <div>
@@ -348,7 +386,9 @@ export default function ReportarPage() {
               <MapaSelectorUbicacion
                 latInicial={formData.latitud}
                 lngInicial={formData.longitud}
-                onSelectLocation={(lat: number, lng: number) => handleUbicacionChange(lat, lng)}
+                onSelectLocation={(lat: number, lng: number) =>
+                  handleUbicacionChange(lat, lng)
+                }
               />
             </div>
           </div>
@@ -387,9 +427,7 @@ export default function ReportarPage() {
               )}
             </button>
           </div>
-
         </form>
-
       </div>
     </main>
   );

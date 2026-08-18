@@ -12,7 +12,7 @@ import {
   UploadedFiles,
   Request,
 } from '@nestjs/common';
-import { FilesInterceptor } from '@nestjs/platform-express';
+import { AnyFilesInterceptor } from '@nestjs/platform-express';
 
 import { ReportesService } from './reportes.service';
 import { CrearReporteDto } from './dto/crear-reporte.dto';
@@ -24,16 +24,16 @@ import { Roles } from '../auth/decorators/roles.decorator';
 export class ReportesController {
   constructor(private readonly reportesService: ReportesService) {}
 
-  // 🟢 1. CREAR REPORTE (Requiere Auth)
+  // 🟢 1. CREAR REPORTE (Acepta cualquier nombre de campo de archivo)
   @Post()
   @UseGuards(JwtAuthGuard)
-  @UseInterceptors(FilesInterceptor('imagenes', 5))
+  @UseInterceptors(AnyFilesInterceptor()) // 👈 Acepta archivos vengan como 'imagenes', 'fotos' o 'archivo'
   async crearReporte(
     @Body() crearReporteDto: CrearReporteDto,
-    @UploadedFiles() imagenes: Express.Multer.File[],
+    @UploadedFiles() archivos: Express.Multer.File[],
     @Request() req,
   ) {
-    return this.reportesService.crearReporte(crearReporteDto, req.user, imagenes);
+    return this.reportesService.crearReporte(crearReporteDto, req.user, archivos || []);
   }
 
   // 🟢 2. RUTAS PÚBLICAS Y ESTÁTICAS (Siempre antes de :id)
@@ -46,6 +46,7 @@ export class ReportesController {
   async obtenerRefugios() {
     return this.reportesService.obtenerRefugiosAliados();
   }
+
   // 🔒 3. MIS REPORTES (Requiere Auth)
   @Get('mis-reportes')
   @UseGuards(JwtAuthGuard)
