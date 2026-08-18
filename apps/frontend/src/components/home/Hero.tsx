@@ -57,7 +57,7 @@ export default function Hero() {
           <div className="relative flex justify-center items-center">
             <div className="relative w-full max-w-[500px] h-[360px] sm:h-[430px] rounded-[28px] overflow-hidden shadow-md border-4 border-white bg-white">
               <img
-                src="https://images.unsplash.com/photo-1548767797-d8c844163c4c?auto=format&fit=crop&q=80&w=1000"
+                src="https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=1400&q=80"
                 alt="Perro y gatos juntos en un hogar seguro"
                 className="w-full h-full object-cover"
               />

@@ -10,17 +10,12 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "raw.githubusercontent.com",
+        hostname: "**.supabase.co",
         pathname: "/**",
       },
       {
         protocol: "https",
         hostname: "images.unsplash.com",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "cdnjs.cloudflare.com",
         pathname: "/**",
       },
     ],

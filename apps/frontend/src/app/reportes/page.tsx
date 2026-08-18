@@ -7,6 +7,7 @@ import { fetchAPI } from '@/lib/api-client';
 interface Imagen {
   id?: string;
   urlCloudinary?: string;
+  url_cloudinary?: string;
   url?: string;
 }
 
@@ -17,6 +18,8 @@ interface Mascota {
   color?: string;
   tamano?: string;
   sexo?: string;
+  fotoUrl?: string;
+  foto_url?: string;
 }
 
 interface Reporte {
@@ -28,6 +31,7 @@ interface Reporte {
   fecha_evento?: string;
   direccion?: string;
   estado?: string;
+  fotoPrincipal?: string;
   mascota?: Mascota;
   imagenes?: Imagen[];
   fotos?: Imagen[];
@@ -88,6 +92,25 @@ export default function ReportesPage() {
       return matchTipo && matchEspecie && matchBusqueda;
     });
   }, [reportes, filtroTipo, filtroEspecie, busqueda]);
+
+  // Helper para resolver la URL de imagen de manera 100% segura
+  const obtenerUrlImagen = (reporte: Reporte): string | null => {
+    if (reporte.fotoPrincipal) return reporte.fotoPrincipal;
+    
+    const lista = reporte.imagenes || reporte.fotos || [];
+    if (lista.length > 0) {
+      const primera = lista[0];
+      const url = primera.urlCloudinary || primera.url_cloudinary || primera.url;
+      if (url && typeof url === 'string' && url.trim() !== '') {
+        return url.trim();
+      }
+    }
+
+    if (reporte.mascota?.fotoUrl) return reporte.mascota.fotoUrl;
+    if (reporte.mascota?.foto_url) return reporte.mascota.foto_url;
+
+    return null;
+  };
 
   return (
     <main className="min-h-screen bg-white py-8 sm:py-12 px-4 sm:px-6 lg:px-8 text-[#292A2F] font-sans">
@@ -239,8 +262,7 @@ export default function ReportesPage() {
             {reportesFiltrados.map((reporte) => {
               const tipo = (reporte.tipoReporte || reporte.tipo_reporte || 'PERDIDO').toUpperCase();
               const esPerdido = tipo === 'PERDIDO';
-              const listaFotos = reporte.imagenes || reporte.fotos || [];
-              const fotoUrl = listaFotos[0]?.urlCloudinary || listaFotos[0]?.url || '';
+              const fotoUrl = obtenerUrlImagen(reporte);
               const fecha = reporte.fechaEvento || reporte.fecha_evento;
 
               return (
@@ -256,6 +278,11 @@ export default function ReportesPage() {
                           src={fotoUrl}
                           alt={reporte.mascota?.nombre || 'Mascota'}
                           className="w-full h-full object-cover"
+                          loading="lazy"
+                          onError={(e) => {
+                            // Si la URL falla, muestra el recuadro por defecto
+                            (e.target as HTMLElement).style.display = 'none';
+                          }}
                         />
                       ) : (
                         <div className="flex flex-col items-center gap-1 text-slate-400">

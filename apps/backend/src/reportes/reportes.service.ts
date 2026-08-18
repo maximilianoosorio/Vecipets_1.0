@@ -1,6 +1,6 @@
 import { Express } from 'express';
 import 'multer';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -16,6 +16,8 @@ const DEFAULT_DIRECCION = 'Medellín, Antioquia';
 
 @Injectable()
 export class ReportesService {
+  private readonly logger = new Logger(ReportesService.name);
+
   constructor(
     @InjectRepository(Mascota)
     private readonly mascotaRepo: Repository<Mascota>,
@@ -28,22 +30,22 @@ export class ReportesService {
     private readonly cloudinaryService: CloudinaryService,
   ) {}
 
-  // 1. Crear un nuevo reporte
+  // 1. Crear un nuevo reporte con persistencia garantizada en Supabase
   async crearReporte(
     dto: CrearReporteDto,
     usuarioLogueado: Usuario,
-    archivosImagenes: Express.Multer.File[],
+    archivosImagenes: Express.Multer.File[] = [],
   ) {
     const rawDto = dto as any;
 
-    // Crear Mascota
+    // Crear y guardar Mascota
     const nuevaMascota = this.mascotaRepo.create({
-      nombre: rawDto.nombre?.trim() || 'Sin Nombre',
-      especie: rawDto.especie,
-      raza: rawDto.raza,
-      color: rawDto.color,
-      tamano: rawDto.tamano,
-      sexo: rawDto.sexo,
+      nombre: rawDto.nombre?.trim() || rawDto.nombreMascota?.trim() || 'Sin Nombre',
+      especie: (rawDto.especie || 'PERRO').toUpperCase(),
+      raza: rawDto.raza?.trim() || 'Mestizo',
+      color: rawDto.color?.trim() || 'No especificado',
+      tamano: rawDto.tamano || 'Mediano',
+      sexo: rawDto.sexo || 'DESCONOCIDO',
       usuario: usuarioLogueado,
     });
     const mascotaGuardada = await this.mascotaRepo.save(nuevaMascota);
@@ -52,21 +54,23 @@ export class ReportesService {
     const rawLat = rawDto.latitud ?? rawDto.lat;
     const rawLng = rawDto.longitud ?? rawDto.lng;
 
-    const latParsed = rawLat !== undefined && rawLat !== null && rawLat !== '' 
-      ? Number(rawLat) 
-      : DEFAULT_LATITUD;
+    const latParsed =
+      rawLat !== undefined && rawLat !== null && rawLat !== ''
+        ? Number(rawLat)
+        : DEFAULT_LATITUD;
 
-    const lngParsed = rawLng !== undefined && rawLng !== null && rawLng !== '' 
-      ? Number(rawLng) 
-      : DEFAULT_LONGITUD;
+    const lngParsed =
+      rawLng !== undefined && rawLng !== null && rawLng !== ''
+        ? Number(rawLng)
+        : DEFAULT_LONGITUD;
 
-    // Crear Reporte
+    // Crear y guardar Reporte
     const nuevoReporte = this.reporteRepo.create({
       mascota: mascotaGuardada,
       usuario: usuarioLogueado,
-      tipoReporte: rawDto.tipoReporte,
+      tipoReporte: (rawDto.tipoReporte || rawDto.tipo_reporte || 'PERDIDO').toUpperCase(),
       fechaEvento: rawDto.fechaEvento ? new Date(rawDto.fechaEvento) : new Date(),
-      descripcion: rawDto.descripcion,
+      descripcion: rawDto.descripcion || 'Sin descripción.',
       direccion: rawDto.direccion?.trim() || DEFAULT_DIRECCION,
       latitud: isNaN(latParsed) ? DEFAULT_LATITUD : latParsed,
       longitud: isNaN(lngParsed) ? DEFAULT_LONGITUD : lngParsed,
@@ -75,49 +79,83 @@ export class ReportesService {
 
     const reporteGuardado: any = await this.reporteRepo.save(nuevoReporte);
 
-    // Subida a Cloudinary
+    // --- MANEJO ROBUSTO DE IMÁGENES ---
+    const imagenesParaGuardar: { url: string; publicId?: string }[] = [];
+
+    // A) Si llegaron archivos binarios (Multer), subirlos a Cloudinary
     if (archivosImagenes && archivosImagenes.length > 0) {
       for (const archivo of archivosImagenes) {
         try {
-          const resultadoCloudinary: any = await this.cloudinaryService.subirImagen(archivo);
-          
-          const nuevaImagen = this.imagenRepo.create({
+          const resultado: any = await this.cloudinaryService.subirImagen(archivo);
+          if (resultado?.secure_url || resultado?.url) {
+            imagenesParaGuardar.push({
+              url: resultado.secure_url || resultado.url,
+              publicId: resultado.public_id || null,
+            });
+          }
+        } catch (error) {
+          this.logger.error(`Error al subir archivo a Cloudinary: ${error.message}`, error.stack);
+        }
+      }
+    }
+
+    // B) Si llegaron URLs directas en el DTO (JSON/Frontend)
+    const urlsDto = [
+      ...(Array.isArray(rawDto.imagenes) ? rawDto.imagenes : []),
+      ...(Array.isArray(rawDto.fotos) ? rawDto.fotos : []),
+      ...(rawDto.fotoUrl ? [rawDto.fotoUrl] : []),
+      ...(rawDto.url_cloudinary ? [rawDto.url_cloudinary] : []),
+    ];
+
+    for (const item of urlsDto) {
+      const urlString = typeof item === 'string' ? item : item?.url || item?.urlCloudinary || item?.url_cloudinary;
+      if (urlString && typeof urlString === 'string' && urlString.startsWith('http')) {
+        imagenesParaGuardar.push({
+          url: urlString.trim(),
+          publicId: item?.publicId || null,
+        });
+      }
+    }
+
+    // C) Guardar todas las fotos en la tabla `imagenes` de Supabase
+    if (imagenesParaGuardar.length > 0) {
+      try {
+        const entidadesImagenes = imagenesParaGuardar.map((img) =>
+          this.imagenRepo.create({
             mascota: mascotaGuardada,
             reporte: reporteGuardado,
-            urlCloudinary: resultadoCloudinary.secure_url || resultadoCloudinary.url,
-            publicId: resultadoCloudinary.public_id,
-          });
-          await this.imagenRepo.save(nuevaImagen);
-        } catch (error) {
-          console.error('Error subiendo imagen a Cloudinary:', error);
-        }
+            urlCloudinary: img.url,
+            publicId: img.publicId,
+          }),
+        );
+        await this.imagenRepo.save(entidadesImagenes);
+        this.logger.log(`Se guardaron ${entidadesImagenes.length} imágenes para el reporte ${reporteGuardado.id}`);
+      } catch (err) {
+        this.logger.error(`Error guardando registros en tabla imagenes: ${err.message}`, err.stack);
       }
     }
 
     return {
       mensaje: 'Reporte registrado exitosamente',
       reporteId: reporteGuardado.id,
+      imagenesSubidas: imagenesParaGuardar.length,
     };
   }
 
-  // 2. Obtener reportes públicos
+  // 2. Obtener reportes públicos con imágenes garantizadas
   async obtenerReportesPublicos() {
-    const reportes: any[] = await this.reporteRepo.find({
+    const reportes = await this.reporteRepo.find({
       relations: {
         mascota: true,
         imagenes: true,
+        usuario: true,
       },
       order: {
         creadoEn: 'DESC',
       },
     });
 
-    return reportes.map((r) => ({
-      ...r,
-      latitud: r.latitud ? Number(r.latitud) : DEFAULT_LATITUD,
-      longitud: r.longitud ? Number(r.longitud) : DEFAULT_LONGITUD,
-      direccion: r.direccion || DEFAULT_DIRECCION,
-    }));
+    return reportes.map((r: any) => this.normalizarReporte(r));
   }
 
   // 3. Obtener detalle de un reporte por ID
@@ -140,15 +178,12 @@ export class ReportesService {
       reporte.usuario = usuarioLimpio;
     }
 
-    reporte.latitud = reporte.latitud ? Number(reporte.latitud) : DEFAULT_LATITUD;
-    reporte.longitud = reporte.longitud ? Number(reporte.longitud) : DEFAULT_LONGITUD;
-
-    return reporte;
+    return this.normalizarReporte(reporte);
   }
 
   // 4. Panel de moderación: Obtener reportes pendientes
   async obtenerPendientes() {
-    return this.reporteRepo.find({
+    const reportes = await this.reporteRepo.find({
       where: { estado: 'PENDIENTE_APROBACION' as any },
       relations: {
         mascota: true,
@@ -157,6 +192,8 @@ export class ReportesService {
       },
       order: { creadoEn: 'ASC' } as any,
     });
+
+    return reportes.map((r: any) => this.normalizarReporte(r));
   }
 
   // 5. Cambiar el estado de un reporte
@@ -180,7 +217,7 @@ export class ReportesService {
 
   // 6. Reportes creados por el usuario en sesión
   async obtenerMisReportes(usuarioId: string) {
-    return this.reporteRepo.find({
+    const reportes = await this.reporteRepo.find({
       where: { usuario: { id: usuarioId as any } },
       relations: {
         mascota: true,
@@ -188,14 +225,16 @@ export class ReportesService {
       },
       order: { creadoEn: 'DESC' } as any,
     });
+
+    return reportes.map((r: any) => this.normalizarReporte(r));
   }
-  // Obtener refugios aliados registrados
+
+  // 7. Obtener refugios aliados registrados
   async obtenerRefugiosAliados() {
     const refugios = await this.usuarioRepo.find({
       relations: { rol: true },
     });
 
-    // Filtra los usuarios cuyo rol sea 'REFUGIO'
     return refugios
       .filter((u: any) => {
         const rolNombre = (u.rol?.nombre || u.rol || '').toUpperCase();
@@ -209,5 +248,32 @@ export class ReportesService {
         direccion: u.direccion || 'Medellín, Antioquia',
         capacidad: u.capacidad || 'Consultar disponibilidad',
       }));
+  }
+
+  // Helper privado para estructurar y normalizar fotos y coordenadas
+  private normalizarReporte(r: any) {
+    const fotosMapeadas = (r.imagenes || r.fotos || [])
+      .map((img: any) => {
+        const urlFinal = img.urlCloudinary || img.url_cloudinary || img.url || '';
+        return {
+          id: img.id,
+          url: urlFinal,
+          urlCloudinary: urlFinal,
+          url_cloudinary: urlFinal,
+        };
+      })
+      .filter((img: any) => Boolean(img.url));
+
+    const fotoPrincipal = fotosMapeadas[0]?.url || r.mascota?.fotoUrl || r.mascota?.foto_url || null;
+
+    return {
+      ...r,
+      latitud: r.latitud ? Number(r.latitud) : DEFAULT_LATITUD,
+      longitud: r.longitud ? Number(r.longitud) : DEFAULT_LONGITUD,
+      direccion: r.direccion || DEFAULT_DIRECCION,
+      imagenes: fotosMapeadas,
+      fotos: fotosMapeadas,
+      fotoPrincipal,
+    };
   }
 }
