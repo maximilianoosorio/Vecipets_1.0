@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 
 interface UsuarioSesion {
@@ -9,6 +10,7 @@ interface UsuarioSesion {
   nombre?: string;
   nombre_completo?: string;
   email?: string;
+  correo?: string;
 }
 
 export default function Navbar() {
@@ -51,19 +53,24 @@ export default function Navbar() {
     <header className="bg-white border-b border-slate-100 sticky top-0 z-50 shadow-xs h-[80px]">
       <div className="max-w-[1240px] h-full mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         
-        {/* LOGO AZUL VECIPETS */}
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="w-10 h-10 rounded-full bg-[#5E7BC4] flex items-center justify-center text-white transition-transform group-hover:scale-105 shadow-xs">
-            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 14c-1.66 0-3 1.34-3 3 0 1.66 1.34 3 3 3s3-1.34 3-3c0-1.66-1.34-3-3-3zm-6-4c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-9-4C8 6 7.1 6.9 7.1 8s.9 2 2 2 2-.9 2-2-.9-2-2.1-2zm6 0c-.9 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-            </svg>
+        {/* LOGO OFICIAL VECIPETS */}
+        <Link href="/" className="flex items-center gap-3 group">
+          <div className="relative w-10 h-10 rounded-full overflow-hidden flex items-center justify-center transition-transform group-hover:scale-105">
+            <Image
+              src="/logo.svg"
+              alt="Logo VeciPets"
+              width={40}
+              height={40}
+              className="object-contain"
+              priority
+            />
           </div>
           <span className="text-2xl font-bold tracking-tight text-[#5E7BC4]">
             VeciPets
           </span>
         </Link>
 
-        {/* NAVEGACIÓN DESKTOP COMPLETA */}
+        {/* NAVEGACIÓN DESKTOP */}
         <nav className="hidden md:flex items-center gap-7">
           <Link
             href="/"
@@ -142,7 +149,7 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* BOTÓN MÓVIL HAMBURGUESA */}
+        {/* BOTÓN MÓVIL */}
         <div className="md:hidden flex items-center">
           <button
             onClick={() => setMenuAbierto(!menuAbierto)}
