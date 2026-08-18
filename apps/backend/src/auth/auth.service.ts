@@ -130,9 +130,12 @@ export class AuthService {
 
     const emailNormalizado = correoRaw.toLowerCase().trim();
 
-    // Buscar usuario por correo (sin bloquear si activo viene null en registros anteriores)
+   // Buscar usuario por correo o email en Supabase
     const usuario: any = await this.usuarioRepo.findOne({
-      where: { correo: emailNormalizado },
+      where: [
+        { correo: emailNormalizado },
+        { email: emailNormalizado } as any,
+      ],
       relations: { rol: true },
     });
 
