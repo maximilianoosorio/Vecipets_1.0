@@ -52,14 +52,31 @@ export default function Navbar() {
     <header className="bg-white border-b border-slate-100 sticky top-0 z-50 shadow-xs h-[80px]">
       <div className="max-w-[1240px] h-full mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         
-        {/* LOGO OFICIAL VECIPETS */}
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="w-10 h-10 flex items-center justify-center transition-transform group-hover:scale-105">
-            <img
-              src="/logo.svg"
-              alt="Logo VeciPets"
-              className="w-full h-full object-contain"
-            />
+        {/* LOGO OFICIAL VECIPETS (DIBUJADO DIRECTO EN SVG) */}
+        <Link href="/" className="flex items-center gap-3 group">
+          <div className="w-10 h-10 transition-transform group-hover:scale-105">
+            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full drop-shadow-sm">
+              <defs>
+                <linearGradient id="vpNavGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#4F75E8" />
+                  <stop offset="50%" stopColor="#4355B9" />
+                  <stop offset="100%" stopColor="#2E338C" />
+                </linearGradient>
+              </defs>
+              {/* Círculo con degradado corporativo */}
+              <circle cx="50" cy="50" r="48" fill="url(#vpNavGrad)" />
+              
+              {/* Huella blanca */}
+              <g fill="#FFFFFF">
+                {/* Almohadilla central */}
+                <path d="M50 46 C41 46 34 54 36 65 C38 74 44 78 50 78 C56 78 62 74 64 65 C66 54 59 46 50 46 Z" />
+                {/* Dedos superiores */}
+                <ellipse cx="32" cy="38" rx="6.5" ry="9" transform="rotate(-18 32 38)" />
+                <ellipse cx="44" cy="30" rx="6.5" ry="9" transform="rotate(-6 44 30)" />
+                <ellipse cx="56" cy="30" rx="6.5" ry="9" transform="rotate(6 56 30)" />
+                <ellipse cx="68" cy="38" rx="6.5" ry="9" transform="rotate(18 68 38)" />
+              </g>
+            </svg>
           </div>
           <span className="text-2xl font-bold tracking-tight text-[#5E7BC4]">
             VeciPets
