@@ -2,13 +2,17 @@ import { Express } from 'express';
 import 'multer';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository } from 'typeorm';
 
 import { Mascota } from '../entities/mascota.entity';
 import { Reporte, Imagen } from '../entities/reporte.entity';
 import { Usuario } from '../entities/usuario.entity';
 import { CrearReporteDto } from './dto/crear-reporte.dto';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
+
+const DEFAULT_LATITUD = 6.2442;
+const DEFAULT_LONGITUD = -75.5812;
+const DEFAULT_DIRECCION = 'Medellín, Antioquia';
 
 @Injectable()
 export class ReportesService {
@@ -19,6 +23,8 @@ export class ReportesService {
     private readonly reporteRepo: Repository<Reporte>,
     @InjectRepository(Imagen)
     private readonly imagenRepo: Repository<Imagen>,
+    @InjectRepository(Usuario)
+    private readonly usuarioRepo: Repository<Usuario>,
     private readonly cloudinaryService: CloudinaryService,
   ) {}
 
@@ -28,32 +34,45 @@ export class ReportesService {
     usuarioLogueado: Usuario,
     archivosImagenes: Express.Multer.File[],
   ) {
-    // Crear Mascota con las propiedades exactas del DTO
+    const rawDto = dto as any;
+
+    // Crear Mascota
     const nuevaMascota = this.mascotaRepo.create({
-      nombre: dto.nombre || 'Sin Nombre',
-      especie: dto.especie,
-      raza: dto.raza,
-      color: dto.color,
-      tamano: dto.tamano,
-      sexo: dto.sexo,
+      nombre: rawDto.nombre?.trim() || 'Sin Nombre',
+      especie: rawDto.especie,
+      raza: rawDto.raza,
+      color: rawDto.color,
+      tamano: rawDto.tamano,
+      sexo: rawDto.sexo,
       usuario: usuarioLogueado,
     });
     const mascotaGuardada = await this.mascotaRepo.save(nuevaMascota);
 
-    // Crear Reporte con latitud, longitud y dirección tipadas
-    const datosReporte: any = {
+    // Coordenadas con fallback a Medellín
+    const rawLat = rawDto.latitud ?? rawDto.lat;
+    const rawLng = rawDto.longitud ?? rawDto.lng;
+
+    const latParsed = rawLat !== undefined && rawLat !== null && rawLat !== '' 
+      ? Number(rawLat) 
+      : DEFAULT_LATITUD;
+
+    const lngParsed = rawLng !== undefined && rawLng !== null && rawLng !== '' 
+      ? Number(rawLng) 
+      : DEFAULT_LONGITUD;
+
+    // Crear Reporte
+    const nuevoReporte = this.reporteRepo.create({
       mascota: mascotaGuardada,
       usuario: usuarioLogueado,
-      tipoReporte: dto.tipoReporte,
-      fechaEvento: dto.fechaEvento ? new Date(dto.fechaEvento) : new Date(),
-      descripcion: dto.descripcion,
-      direccion: dto.direccion,
-      latitud: dto.latitud ? Number(dto.latitud) : null,
-      longitud: dto.longitud ? Number(dto.longitud) : null,
-      estado: (dto as any).estado || 'PUBLICADO',
-    };
+      tipoReporte: rawDto.tipoReporte,
+      fechaEvento: rawDto.fechaEvento ? new Date(rawDto.fechaEvento) : new Date(),
+      descripcion: rawDto.descripcion,
+      direccion: rawDto.direccion?.trim() || DEFAULT_DIRECCION,
+      latitud: isNaN(latParsed) ? DEFAULT_LATITUD : latParsed,
+      longitud: isNaN(lngParsed) ? DEFAULT_LONGITUD : lngParsed,
+      estado: rawDto.estado || 'PUBLICADO',
+    } as any);
 
-    const nuevoReporte = this.reporteRepo.create(datosReporte);
     const reporteGuardado: any = await this.reporteRepo.save(nuevoReporte);
 
     // Subida a Cloudinary
@@ -83,17 +102,22 @@ export class ReportesService {
 
   // 2. Obtener reportes públicos
   async obtenerReportesPublicos() {
-    return this.reporteRepo.find({
-      where: {
-        estado: In(['PUBLICADO', 'ACTIVO', 'PENDIENTE_APROBACION'] as any),
-      },
+    const reportes: any[] = await this.reporteRepo.find({
       relations: {
         mascota: true,
         imagenes: true,
       },
-      order: { creadoEn: 'DESC' } as any,
-      take: 100,
+      order: {
+        creadoEn: 'DESC',
+      },
     });
+
+    return reportes.map((r) => ({
+      ...r,
+      latitud: r.latitud ? Number(r.latitud) : DEFAULT_LATITUD,
+      longitud: r.longitud ? Number(r.longitud) : DEFAULT_LONGITUD,
+      direccion: r.direccion || DEFAULT_DIRECCION,
+    }));
   }
 
   // 3. Obtener detalle de un reporte por ID
@@ -115,6 +139,9 @@ export class ReportesService {
       const { contrasenaHash, password, ...usuarioLimpio } = reporte.usuario;
       reporte.usuario = usuarioLimpio;
     }
+
+    reporte.latitud = reporte.latitud ? Number(reporte.latitud) : DEFAULT_LATITUD;
+    reporte.longitud = reporte.longitud ? Number(reporte.longitud) : DEFAULT_LONGITUD;
 
     return reporte;
   }
@@ -161,5 +188,26 @@ export class ReportesService {
       },
       order: { creadoEn: 'DESC' } as any,
     });
+  }
+  // Obtener refugios aliados registrados
+  async obtenerRefugiosAliados() {
+    const refugios = await this.usuarioRepo.find({
+      relations: { rol: true },
+    });
+
+    // Filtra los usuarios cuyo rol sea 'REFUGIO'
+    return refugios
+      .filter((u: any) => {
+        const rolNombre = (u.rol?.nombre || u.rol || '').toUpperCase();
+        return rolNombre === 'REFUGIO';
+      })
+      .map((u: any) => ({
+        id: u.id,
+        nombre: u.nombre || u.nombreCompleto || 'Refugio Aliado',
+        email: u.email || u.correo,
+        telefono: u.telefono || 'No disponible',
+        direccion: u.direccion || 'Medellín, Antioquia',
+        capacidad: u.capacidad || 'Consultar disponibilidad',
+      }));
   }
 }

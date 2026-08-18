@@ -42,6 +42,10 @@ export class ReportesController {
     return this.reportesService.obtenerReportesPublicos();
   }
 
+  @Get('refugios')
+  async obtenerRefugios() {
+    return this.reportesService.obtenerRefugiosAliados();
+  }
   // 🔒 3. MIS REPORTES (Requiere Auth)
   @Get('mis-reportes')
   @UseGuards(JwtAuthGuard)

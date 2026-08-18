@@ -59,17 +59,41 @@ export default function MapaPage() {
   const [filtroEspecie, setFiltroEspecie] = useState('TODOS');
   const [busqueda, setBusqueda] = useState('');
 
-  useEffect(() => {
+  const MapaGeneralLeaflet = dynamic(
+  () => import('@/components/mapa/MapaGeneralLeaflet'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[550px] w-full bg-[#EEF2FC] rounded-3xl animate-pulse flex flex-col items-center justify-center text-[#53627A] gap-3 border border-slate-100">
+        <span className="text-4xl animate-bounce">🐾</span>
+        <p className="text-sm font-semibold">Cargando mapa interactivo de Medellín...</p>
+      </div>
+    ),
+  }
+);
+ useEffect(() => {
     let isMounted = true;
     setCargando(true);
 
-    fetchAPI<ReporteMapa[]>('/reportes/publicos')
+    fetchAPI<any>('/reportes/publicos')
       .then((data) => {
         if (isMounted) {
-          setReportes(Array.isArray(data) ? data : []);
+          // Si el backend devuelve un arreglo directo o { data: [...] }
+          const lista = Array.isArray(data) ? data : data?.reportes || data?.data || [];
+          console.log('🐾 Reportes recibidos para el mapa:', lista);
+          setReportes(lista);
         }
       })
-      .catch((err) => console.error('Error al cargar datos del mapa:', err))
+      .catch((err) => {
+        console.error('Error al cargar datos del mapa:', err);
+        // Fallback: Si /reportes/publicos falla, intentar con /reportes
+        fetchAPI<any>('/reportes')
+          .then((fallbackData) => {
+            const lista = Array.isArray(fallbackData) ? fallbackData : fallbackData?.reportes || [];
+            if (isMounted) setReportes(lista);
+          })
+          .catch((e) => console.error('Error en fallback:', e));
+      })
       .finally(() => {
         if (isMounted) setCargando(false);
       });
@@ -78,7 +102,6 @@ export default function MapaPage() {
       isMounted = false;
     };
   }, []);
-
   // Filtrado reactivo optimizado en memoria
   const reportesFiltrados = useMemo(() => {
     return reportes.filter((r) => {
